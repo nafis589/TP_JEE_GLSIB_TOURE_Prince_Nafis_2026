@@ -2,13 +2,13 @@ import { Component } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 @Component({
-    selector: 'app-admin-sidebar',
-    standalone: true,
-    imports: [RouterLink, RouterLinkActive],
-    template: `
+  selector: 'app-admin-sidebar',
+  standalone: true,
+  imports: [RouterLink, RouterLinkActive],
+  template: `
     <nav id="sidebar" class="bg-dark text-white">
         <div class="sidebar-header p-4">
-          <h4 class="fw-bold text-success mb-0">NevBank Admin</h4>
+          <h4 class="fw-bold text-success mb-0"> Admin</h4>
         </div>
         <ul class="list-unstyled components px-3">
           <li class="mb-2">
@@ -45,7 +45,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
         </ul>
       </nav>
   `,
-    styles: [`
+  styles: [`
     #sidebar {
       min-width: 250px;
       max-width: 250px;

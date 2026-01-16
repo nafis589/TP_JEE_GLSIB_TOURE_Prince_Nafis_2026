@@ -8,10 +8,10 @@ import { Observable } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 
 @Component({
-    selector: 'app-releve-generate',
-    standalone: true,
-    imports: [CommonModule, FormsModule],
-    template: `
+  selector: 'app-releve-generate',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
     <div class="d-flex justify-content-between align-items-center mb-4 d-print-none">
       <h2 class="fw-bold text-dark">Génération de Relevé</h2>
     </div>
@@ -50,7 +50,7 @@ import { FormsModule } from '@angular/forms';
     <div id="releve-preview" *ngIf="releve" class="card border-0 shadow-sm p-5">
       <div class="d-flex justify-content-between align-items-start mb-5">
         <div>
-          <h1 class="fw-bold text-success">NEVBANK</h1>
+          <h1 class="fw-bold text-success">EgaBank</h1>
           <p class="text-muted mb-0">Relevé de Compte Officiel</p>
         </div>
         <div class="text-end text-dark">
@@ -121,7 +121,7 @@ import { FormsModule } from '@angular/forms';
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     @media print {
       body * { visibility: hidden; }
       #releve-preview, #releve-preview * { visibility: visible; }
@@ -130,47 +130,47 @@ import { FormsModule } from '@angular/forms';
   `]
 })
 export class ReleveGenerateComponent implements OnInit {
-    comptes$: Observable<Compte[]>;
-    selectedCompteId: string = '';
-    dateDebut: string = '';
-    dateFin: string = '';
+  comptes$: Observable<Compte[]>;
+  selectedCompteId: string = '';
+  dateDebut: string = '';
+  dateFin: string = '';
 
-    releve: Releve | null = null;
-    currentCompte: Compte | null = null;
-    today = new Date();
+  releve: Releve | null = null;
+  currentCompte: Compte | null = null;
+  today = new Date();
 
-    constructor(
-        private compteService: CompteService,
-        private transactionService: TransactionService,
-        private releveService: ReleveService
-    ) {
-        this.comptes$ = this.compteService.getComptes();
-    }
+  constructor(
+    private compteService: CompteService,
+    private transactionService: TransactionService,
+    private releveService: ReleveService
+  ) {
+    this.comptes$ = this.compteService.getComptes();
+  }
 
-    ngOnInit(): void { }
+  ngOnInit(): void { }
 
-    get netMovement(): number {
-        if (!this.releve) return 0;
-        return this.releve.transactions.reduce((acc, t) => acc + (t.type === 'DEPOT' ? t.montant : -t.montant), 0);
-    }
+  get netMovement(): number {
+    if (!this.releve) return 0;
+    return this.releve.transactions.reduce((acc, t) => acc + (t.type === 'DEPOT' ? t.montant : -t.montant), 0);
+  }
 
-    generate() {
-        this.compteService.getCompteById(this.selectedCompteId).subscribe(compte => {
-            this.currentCompte = compte || null;
-            this.transactionService.getTransactions({ compteId: this.selectedCompteId }).subscribe(transactions => {
-                this.releveService.generateReleve(
-                    this.selectedCompteId,
-                    new Date(this.dateDebut),
-                    new Date(this.dateFin),
-                    transactions
-                ).subscribe(res => {
-                    this.releve = res;
-                });
-            });
+  generate() {
+    this.compteService.getCompteById(this.selectedCompteId).subscribe(compte => {
+      this.currentCompte = compte || null;
+      this.transactionService.getTransactions({ compteId: this.selectedCompteId }).subscribe(transactions => {
+        this.releveService.generateReleve(
+          this.selectedCompteId,
+          new Date(this.dateDebut),
+          new Date(this.dateFin),
+          transactions
+        ).subscribe(res => {
+          this.releve = res;
         });
-    }
+      });
+    });
+  }
 
-    print() {
-        window.print();
-    }
+  print() {
+    window.print();
+  }
 }

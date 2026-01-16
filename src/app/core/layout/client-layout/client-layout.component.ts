@@ -15,7 +15,7 @@ import { ClientNavbarComponent } from './client-navbar.component';
     </main>
 
     <footer class="text-center py-4 text-muted small border-top mt-5">
-      &copy; 2024 NevBank Digital Banking - Sécurisé par SSL
+      &copy; 2026 EgaBank Digital Banking - Sécurisé par SSL
     </footer>
   `
 })

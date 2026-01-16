@@ -8,7 +8,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
   template: `
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm py-3 px-4">
       <div class="container">
-        <a class="navbar-brand fw-bold text-success" routerLink="/client/dashboard">NevBank</a>
+        <a class="navbar-brand fw-bold text-success" routerLink="/client/dashboard">Egabank</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
           <span class="navbar-toggler-icon"></span>
         </button>

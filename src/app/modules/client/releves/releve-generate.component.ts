@@ -6,10 +6,10 @@ import { Observable } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 
 @Component({
-    selector: 'app-client-releves',
-    standalone: true,
-    imports: [CommonModule, FormsModule],
-    template: `
+  selector: 'app-client-releves',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
     <div class="container py-4">
       <div class="d-flex justify-content-between align-items-center mb-4 d-print-none text-dark">
         <h2 class="fw-bold">Mes Relevés Bancaires</h2>
@@ -48,7 +48,7 @@ import { FormsModule } from '@angular/forms';
       <div id="releve-print-area" *ngIf="releve" class="card border-0 shadow-sm p-5 text-dark">
         <div class="d-flex justify-content-between mb-5">
           <div>
-            <h1 class="fw-bold text-primary mb-0">NEVBANK</h1>
+            <h1 class="fw-bold text-primary mb-0">Egabank</h1>
             <p class="text-muted">Votre banque en ligne</p>
             <div class="mt-4">
               <h5 class="fw-bold mb-1">{{ (profile$ | async)?.prenom }} {{ (profile$ | async)?.nom }}</h5>
@@ -102,7 +102,7 @@ import { FormsModule } from '@angular/forms';
         </div>
 
         <div class="mt-5 pt-5 d-flex justify-content-between align-items-center d-print-none">
-          <p class="text-muted small mb-0">Ce document est un relevé officiel généré par NEVBANK.</p>
+          <p class="text-muted small mb-0">Ce document est un relevé officiel généré par Egabank.</p>
           <button class="btn btn-dark" (click)="print()">
             <i class="bi bi-printer me-2"></i>Imprimer le relevé
           </button>
@@ -110,7 +110,7 @@ import { FormsModule } from '@angular/forms';
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     @media print {
       body * { visibility: hidden; }
       #releve-print-area, #releve-print-area * { visibility: visible; }
@@ -119,41 +119,41 @@ import { FormsModule } from '@angular/forms';
   `]
 })
 export class ClientRelevésComponent implements OnInit {
-    accounts$: Observable<Compte[]>;
-    profile$: Observable<Client>;
+  accounts$: Observable<Compte[]>;
+  profile$: Observable<Client>;
 
-    selectedCompteId = '';
-    dateDebut = '';
-    dateFin = '';
+  selectedCompteId = '';
+  dateDebut = '';
+  dateFin = '';
 
-    releve: Releve | null = null;
-    selectedCompteNumero = '';
-    isLoading = false;
-    today = new Date();
+  releve: Releve | null = null;
+  selectedCompteNumero = '';
+  isLoading = false;
+  today = new Date();
 
-    constructor(private clientBankService: ClientBankService) {
-        this.accounts$ = this.clientBankService.getAccounts();
-        this.profile$ = this.clientBankService.getProfile();
-    }
+  constructor(private clientBankService: ClientBankService) {
+    this.accounts$ = this.clientBankService.getAccounts();
+    this.profile$ = this.clientBankService.getProfile();
+  }
 
-    ngOnInit(): void { }
+  ngOnInit(): void { }
 
-    generate() {
-        this.isLoading = true;
-        this.clientBankService.getAccountById(this.selectedCompteId).subscribe(acc => {
-            this.selectedCompteNumero = acc?.numeroCompte || '';
-            this.clientBankService.generateReleve(
-                this.selectedCompteId,
-                new Date(this.dateDebut),
-                new Date(this.dateFin)
-            ).subscribe(res => {
-                this.releve = res;
-                this.isLoading = false;
-            });
-        });
-    }
+  generate() {
+    this.isLoading = true;
+    this.clientBankService.getAccountById(this.selectedCompteId).subscribe(acc => {
+      this.selectedCompteNumero = acc?.numeroCompte || '';
+      this.clientBankService.generateReleve(
+        this.selectedCompteId,
+        new Date(this.dateDebut),
+        new Date(this.dateFin)
+      ).subscribe(res => {
+        this.releve = res;
+        this.isLoading = false;
+      });
+    });
+  }
 
-    print() {
-        window.print();
-    }
+  print() {
+    window.print();
+  }
 }
