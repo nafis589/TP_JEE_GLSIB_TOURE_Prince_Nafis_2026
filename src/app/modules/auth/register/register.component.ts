@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, NgZone, PLATFORM_ID, Inject } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
-import { finalize, timeout } from 'rxjs/operators';
+import { finalize } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-register',
@@ -122,18 +123,25 @@ import { finalize, timeout } from 'rxjs/operators';
     }
   `]
 })
-export class RegisterComponent implements OnInit {
+export class RegisterComponent implements OnInit, OnDestroy {
   registerForm: FormGroup;
   loading = false;
   submitted = false;
   errorMessage = '';
   successMessage = '';
+  private isBrowser: boolean;
+  private registerSubscription: Subscription | null = null;
+  private loginSubscription: Subscription | null = null;
 
   constructor(
     private formBuilder: FormBuilder,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef,
+    private ngZone: NgZone,
+    @Inject(PLATFORM_ID) private platformId: Object
   ) {
+    this.isBrowser = isPlatformBrowser(this.platformId);
     this.registerForm = this.formBuilder.group({
       nom: ['', Validators.required],
       prenom: ['', Validators.required],
@@ -150,7 +158,22 @@ export class RegisterComponent implements OnInit {
     }, { validators: this.passwordMatchValidator });
   }
 
-  ngOnInit() { }
+  ngOnInit() {
+    // Ne pas exécuter de logique côté serveur
+    if (!this.isBrowser) {
+      return;
+    }
+  }
+
+  ngOnDestroy() {
+    // Nettoyer les souscriptions pour éviter les fuites mémoire
+    if (this.registerSubscription) {
+      this.registerSubscription.unsubscribe();
+    }
+    if (this.loginSubscription) {
+      this.loginSubscription.unsubscribe();
+    }
+  }
 
   passwordMatchValidator(g: FormGroup) {
     const pass = g.get('password')?.value;
@@ -161,6 +184,17 @@ export class RegisterComponent implements OnInit {
   get f() { return this.registerForm.controls; }
 
   onSubmit() {
+    // Protection contre la soumission côté serveur
+    if (!this.isBrowser) {
+      return;
+    }
+
+    // Protection contre les doubles soumissions
+    if (this.loading) {
+      console.log('Soumission bloquée - déjà en cours');
+      return;
+    }
+
     this.submitted = true;
     this.errorMessage = '';
     this.successMessage = '';
@@ -169,7 +203,14 @@ export class RegisterComponent implements OnInit {
       return;
     }
 
+    // Annuler toute souscription précédente
+    if (this.registerSubscription) {
+      this.registerSubscription.unsubscribe();
+    }
+
     this.loading = true;
+    this.cdr.detectChanges(); // Forcer la mise à jour immédiate
+
     const val = this.registerForm.value;
 
     const payload = {
@@ -185,47 +226,75 @@ export class RegisterComponent implements OnInit {
       nationality: val.nationality
     };
 
-    this.authService.register(payload)
+    this.registerSubscription = this.authService.register(payload)
       .pipe(
         finalize(() => {
-          // On ne met loading a false ici que si on n'enchaîne pas sur le login
-          // Mais par sécurité et respect des consignes, on le gère dans les sous-appels
+          // Ce finalize est pour le register uniquement
+          // loading sera géré dans performAutoLogin ou error
+          this.ngZone.run(() => {
+            console.log('REGISTER FINALIZE EXECUTED - Browser:', this.isBrowser);
+            this.cdr.detectChanges();
+          });
         })
       )
       .subscribe({
         next: (response) => {
-          this.successMessage = "Inscription réussie ! Connexion en cours...";
-          // Enchaîner sur la connexion automatique
-          this.performAutoLogin(val.username, val.password);
+          this.ngZone.run(() => {
+            this.successMessage = "Inscription réussie ! Connexion en cours...";
+            this.cdr.detectChanges();
+            // Enchaîner sur la connexion automatique
+            this.performAutoLogin(val.username, val.password);
+          });
         },
         error: (err) => {
-          this.loading = false;
-          console.error('Register error:', err);
-          this.errorMessage = err.error?.message || err.message || "Une erreur est survenue lors de l'inscription.";
+          this.ngZone.run(() => {
+            this.loading = false;
+            console.error('Register error:', err);
+            this.errorMessage = err.error?.message || err.message || "Une erreur est survenue lors de l'inscription.";
+            this.cdr.detectChanges(); // Forcer la mise à jour du template
+          });
         }
       });
   }
 
   private performAutoLogin(username: string, password: string) {
-    this.authService.login(username, password)
+    // Annuler toute souscription précédente
+    if (this.loginSubscription) {
+      this.loginSubscription.unsubscribe();
+    }
+
+    this.loginSubscription = this.authService.login(username, password)
       .pipe(
         finalize(() => {
-          this.loading = false;
+          this.ngZone.run(() => {
+            console.log('AUTO-LOGIN FINALIZE EXECUTED - Browser:', this.isBrowser);
+            this.loading = false;
+            this.cdr.detectChanges(); // Forcer la mise à jour du template
+          });
         })
       )
       .subscribe({
         next: () => {
-          this.router.navigate(['/client/dashboard']);
+          this.ngZone.run(() => {
+            this.cdr.detectChanges();
+            this.router.navigate(['/client/dashboard']);
+          });
         },
         error: (err) => {
-          console.error('Auto-login failed:', err);
-          this.successMessage = "Compte créé ! Veuillez vous connecter manuellement.";
-          setTimeout(() => {
-            this.router.navigate(['/auth/login'], {
-              queryParams: { registered: true, username: username }
-            });
-          }, 2000);
+          this.ngZone.run(() => {
+            console.error('Auto-login failed:', err);
+            this.successMessage = "Compte créé ! Veuillez vous connecter manuellement.";
+            this.cdr.detectChanges();
+            setTimeout(() => {
+              this.ngZone.run(() => {
+                this.router.navigate(['/auth/login'], {
+                  queryParams: { registered: true, username: username }
+                });
+              });
+            }, 2000);
+          });
         }
       });
   }
 }
+
