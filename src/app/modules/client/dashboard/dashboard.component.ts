@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ClientBankService } from '../../../shared/services/client-bank.service';
-import { Observable, map, forkJoin } from 'rxjs';
+import { Observable, map, forkJoin, switchMap, of } from 'rxjs';
 import { Client, Compte, Transaction } from '../../../shared/models/bank.models';
 import { RouterLink } from '@angular/router';
 
@@ -163,14 +163,26 @@ export class ClientDashboardComponent implements OnInit {
   constructor(private clientBankService: ClientBankService) { }
 
   ngOnInit(): void {
+    // On récupère le profil et les comptes en parallèle
     this.data$ = forkJoin({
       profile: this.clientBankService.getProfile(),
-      accounts: this.clientBankService.getAccounts(),
-      transactions: this.clientBankService.getTransactions()
+      accounts: this.clientBankService.getAccounts()
     }).pipe(
-      map(res => {
-        this.totalBalance = res.accounts.reduce((sum, acc) => sum + acc.solde, 0);
-        return res;
+      switchMap((res: { profile: Client, accounts: Compte[] }) => {
+        this.totalBalance = res.accounts.reduce((sum: number, acc: Compte) => sum + acc.solde, 0);
+
+        // Si le client a des comptes, on récupère les transactions du premier compte
+        // Sinon on retourne une liste vide
+        const transObs = res.accounts.length > 0
+          ? this.clientBankService.getTransactions({ compteId: res.accounts[0].numeroCompte })
+          : of([]);
+
+        return transObs.pipe(
+          map(transactions => ({
+            ...res,
+            transactions
+          }))
+        );
       })
     );
   }

@@ -156,17 +156,16 @@ export class ReleveGenerateComponent implements OnInit {
 
   generate() {
     this.compteService.getCompteById(this.selectedCompteId).subscribe(compte => {
-      this.currentCompte = compte || null;
-      this.transactionService.getTransactions({ compteId: this.selectedCompteId }).subscribe(transactions => {
+      if (compte) {
+        this.currentCompte = compte;
         this.releveService.generateReleve(
-          this.selectedCompteId,
-          new Date(this.dateDebut),
-          new Date(this.dateFin),
-          transactions
+          compte.numeroCompte,
+          this.dateDebut,
+          this.dateFin
         ).subscribe(res => {
           this.releve = res;
         });
-      });
+      }
     });
   }
 

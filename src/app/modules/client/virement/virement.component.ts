@@ -7,10 +7,10 @@ import { Observable } from 'rxjs';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 @Component({
-    selector: 'app-client-virement',
-    standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, RouterLink],
-    template: `
+  selector: 'app-client-virement',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  template: `
     <div class="container py-4">
       <div class="row justify-content-center">
         <div class="col-lg-8">
@@ -26,7 +26,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
                 <label class="form-label fw-bold">Débiter le compte</label>
                 <select class="form-select form-select-lg" formControlName="compteSource">
                   <option value="">Sélectionner le compte à débiter</option>
-                  <option *ngFor="let acc of accounts$ | async" [value]="acc.id">
+                  <option *ngFor="let acc of accounts$ | async" [value]="acc.numeroCompte">
                     {{ acc.numeroCompte }} ({{ acc.solde | currency:'EUR' }})
                   </option>
                 </select>
@@ -43,7 +43,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
                   <select class="form-select" formControlName="compteDestination">
                     <option value="">Choisir un bénéficiaire</option>
                     <optgroup label="Mes Comptes">
-                      <option *ngFor="let acc of accounts$ | async" [value]="acc.id" [disabled]="acc.id === virementForm.get('compteSource')?.value">
+                      <option *ngFor="let acc of accounts$ | async" [value]="acc.numeroCompte" [disabled]="acc.numeroCompte === virementForm.get('compteSource')?.value">
                         {{ acc.numeroCompte }} (Mien)
                       </option>
                     </optgroup>
@@ -99,44 +99,50 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
   `
 })
 export class ClientVirementComponent implements OnInit {
-    virementForm: FormGroup;
-    accounts$: Observable<Compte[]>;
-    isLoading = false;
+  virementForm: FormGroup;
+  accounts$: Observable<Compte[]>;
+  isLoading = false;
 
-    constructor(
-        private fb: FormBuilder,
-        private clientBankService: ClientBankService,
-        private router: Router,
-        private route: ActivatedRoute
-    ) {
-        this.accounts$ = this.clientBankService.getAccounts();
-        this.virementForm = this.fb.group({
-            compteSource: ['', Validators.required],
-            compteDestination: ['', Validators.required],
-            montant: [null, [Validators.required, Validators.min(1)]],
-            description: ['', Validators.required]
-        });
+  constructor(
+    private fb: FormBuilder,
+    private clientBankService: ClientBankService,
+    private router: Router,
+    private route: ActivatedRoute
+  ) {
+    this.accounts$ = this.clientBankService.getAccounts();
+    this.virementForm = this.fb.group({
+      compteSource: ['', Validators.required],
+      compteDestination: ['', Validators.required],
+      montant: [null, [Validators.required, Validators.min(1)]],
+      description: ['', Validators.required]
+    });
+  }
+
+  ngOnInit(): void {
+    const fromId = this.route.snapshot.queryParamMap.get('from');
+    if (fromId) {
+      this.virementForm.patchValue({ compteSource: fromId });
     }
+  }
 
-    ngOnInit(): void {
-        const fromId = this.route.snapshot.queryParamMap.get('from');
-        if (fromId) {
-            this.virementForm.patchValue({ compteSource: fromId });
+  isInvalid(name: string) {
+    const control = this.virementForm.get(name);
+    return control?.invalid && (control?.dirty || control?.touched);
+  }
+
+  onSubmit() {
+    if (this.virementForm.valid) {
+      this.isLoading = true;
+      this.clientBankService.performTransfer(this.virementForm.value).subscribe({
+        next: () => {
+          alert("Virement effectué avec succès !");
+          this.router.navigate(['/client/dashboard']);
+        },
+        error: (err) => {
+          alert("Erreur: " + (err.error?.message || err.message));
+          this.isLoading = false;
         }
+      });
     }
-
-    isInvalid(name: string) {
-        const control = this.virementForm.get(name);
-        return control?.invalid && (control?.dirty || control?.touched);
-    }
-
-    onSubmit() {
-        if (this.virementForm.valid) {
-            this.isLoading = true;
-            this.clientBankService.performTransfer(this.virementForm.value).subscribe(() => {
-                alert("Virement effectué avec succès !");
-                this.router.navigate(['/client/dashboard']);
-            });
-        }
-    }
+  }
 }

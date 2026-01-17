@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
+import { finalize, timeout } from 'rxjs/operators';
 
 @Component({
   selector: 'app-register',
@@ -10,71 +11,99 @@ import { AuthService } from '../../../core/auth/auth.service';
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   template: `
     <div class="auth-wrapper d-flex align-items-center justify-content-center bg-light py-5 min-vh-100">
-      <div class="card border-0 p-4 p-md-5 my-5" style="max-width: 600px; width: 100%;">
+      <div class="card border-0 p-4 p-md-5 my-5 shadow-sm" style="max-width: 700px; width: 100%;">
         <div class="text-center mb-5">
           <h1 class="fw-bold text-success mb-2">Devenir Client EgaBank</h1>
           <p class="text-muted">Ouvrez votre compte en quelques minutes</p>
         </div>
 
+        <!-- Alertes de Message -->
+        <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show border-0 small mb-4" role="alert">
+          <i class="bi bi-exclamation-circle me-2"></i> {{ errorMessage }}
+          <button type="button" class="btn-close" (click)="errorMessage = ''" aria-label="Close"></button>
+        </div>
+
+        <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show border-0 small mb-4" role="alert">
+          <i class="bi bi-check-circle me-2"></i> {{ successMessage }}
+          <button type="button" class="btn-close" (click)="successMessage = ''" aria-label="Close"></button>
+        </div>
+
         <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
           <div class="row g-3">
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-bold small text-dark">Nom</label>
-              <input type="text" formControlName="nom" class="form-control" placeholder="Nom"
-                     [class.is-invalid]="submitted && f['nom'].errors">
-              <div *ngIf="submitted && f['nom'].errors" class="invalid-feedback">Le nom est requis.</div>
-            </div>
-            <div class="col-md-6 mb-3">
+            <!-- Identité -->
+            <div class="col-md-6 mb-2">
               <label class="form-label fw-bold small text-dark">Prénom</label>
               <input type="text" formControlName="prenom" class="form-control" placeholder="Prénom"
                      [class.is-invalid]="submitted && f['prenom'].errors">
-              <div *ngIf="submitted && f['prenom'].errors" class="invalid-feedback">Le prénom est requis.</div>
             </div>
-          </div>
+            <div class="col-md-6 mb-2">
+              <label class="form-label fw-bold small text-dark">Nom</label>
+              <input type="text" formControlName="nom" class="form-control" placeholder="Nom"
+                     [class.is-invalid]="submitted && f['nom'].errors">
+            </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-bold small text-dark">Adresse E-mail</label>
-            <input type="email" formControlName="email" class="form-control" placeholder="exemple@mail.com"
-                   [class.is-invalid]="submitted && f['email'].errors">
-            <div *ngIf="submitted && f['email'].errors" class="invalid-feedback">E-mail valide requis.</div>
-          </div>
+            <!-- Email & Identifiant -->
+            <div class="col-md-6 mb-2">
+              <label class="form-label fw-bold small text-dark">Adresse E-mail</label>
+              <input type="email" formControlName="email" class="form-control" placeholder="exemple@mail.com"
+                     [class.is-invalid]="submitted && f['email'].errors">
+            </div>
+            <div class="col-md-6 mb-2">
+              <label class="form-label fw-bold small text-dark">Identifiant (Username)</label>
+              <input type="text" formControlName="username" class="form-control" placeholder="Identifiant"
+                     [class.is-invalid]="submitted && f['username'].errors">
+            </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-bold small text-dark">Identifiant (Username)</label>
-            <input type="text" formControlName="username" class="form-control" placeholder="Choisissez un identifiant"
-                   [class.is-invalid]="submitted && f['username'].errors">
-            <div *ngIf="submitted && f['username'].errors" class="invalid-feedback">Identifiant requis.</div>
-          </div>
-
-          <div class="row g-3">
-            <div class="col-md-6 mb-3">
+            <!-- Password -->
+            <div class="col-md-6 mb-2">
               <label class="form-label fw-bold small text-dark">Mot de passe</label>
-              <input type="password" formControlName="password" class="form-control" placeholder="Minimum 6 caractères"
+              <input type="password" formControlName="password" class="form-control" placeholder="Min 6 caractères"
                      [class.is-invalid]="submitted && f['password'].errors">
-              <div *ngIf="submitted && f['password'].errors" class="invalid-feedback">Min 6 caractères requis.</div>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6 mb-2">
               <label class="form-label fw-bold small text-dark">Confirmer le mot de passe</label>
               <input type="password" formControlName="confirmPassword" class="form-control" placeholder="Confirmez"
                      [class.is-invalid]="submitted && f['confirmPassword'].errors">
-              <div *ngIf="submitted && f['confirmPassword'].errors" class="invalid-feedback">
-                {{ f['confirmPassword'].errors['mismatch'] ? 'Les mots de passe ne correspondent pas' : 'Confirmation requise' }}
-              </div>
+            </div>
+
+            <!-- Détails supplémentaires -->
+            <div class="col-md-4 mb-2">
+              <label class="form-label fw-bold small text-dark">Date de naissance</label>
+              <input type="date" formControlName="birthDate" class="form-control" [class.is-invalid]="submitted && f['birthDate'].errors">
+            </div>
+            <div class="col-md-4 mb-2">
+              <label class="form-label fw-bold small text-dark">Genre</label>
+              <select formControlName="gender" class="form-select">
+                <option value="M">Masculin</option>
+                <option value="F">Féminin</option>
+              </select>
+            </div>
+            <div class="col-md-4 mb-2">
+              <label class="form-label fw-bold small text-dark">Nationalité</label>
+              <input type="text" formControlName="nationality" class="form-control" placeholder="Ex: Béninaise" [class.is-invalid]="submitted && f['nationality'].errors">
+            </div>
+
+            <div class="col-md-8 mb-2">
+              <label class="form-label fw-bold small text-dark">Adresse</label>
+              <input type="text" formControlName="address" class="form-control" placeholder="Votre adresse physique" [class.is-invalid]="submitted && f['address'].errors">
+            </div>
+            <div class="col-md-4 mb-2">
+              <label class="form-label fw-bold small text-dark">Téléphone</label>
+              <input type="text" formControlName="phoneNumber" class="form-control" placeholder="+229..." [class.is-invalid]="submitted && f['phoneNumber'].errors">
             </div>
           </div>
 
-          <div class="mb-4 form-check mt-3">
+          <div class="mb-3 form-check mt-3">
             <input type="checkbox" class="form-check-input" id="terms" formControlName="terms">
             <label class="form-check-label small text-muted" for="terms">
               J'accepte les <a href="#" class="text-success fw-bold text-decoration-none">Conditions Générales d'Utilisation</a>
             </label>
-            <div *ngIf="submitted && f['terms'].errors" class="text-danger small mt-1">Vous devez accepter les conditions.</div>
           </div>
 
           <div class="d-grid mt-4">
             <button type="submit" class="btn btn-success btn-lg fw-bold shadow-sm p-3" [disabled]="loading">
-              <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
-              Créer mon compte
+              <span *ngIf="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              {{ loading ? 'Traitement en cours...' : 'Créer mon compte' }}
             </button>
           </div>
         </form>
@@ -97,6 +126,8 @@ export class RegisterComponent implements OnInit {
   registerForm: FormGroup;
   loading = false;
   submitted = false;
+  errorMessage = '';
+  successMessage = '';
 
   constructor(
     private formBuilder: FormBuilder,
@@ -110,6 +141,11 @@ export class RegisterComponent implements OnInit {
       username: ['', Validators.required],
       password: ['', [Validators.required, Validators.minLength(6)]],
       confirmPassword: ['', Validators.required],
+      birthDate: ['1995-10-10', Validators.required],
+      gender: ['M', Validators.required],
+      address: ['', Validators.required],
+      phoneNumber: ['', Validators.required],
+      nationality: ['', Validators.required],
       terms: [false, Validators.requiredTrue]
     }, { validators: this.passwordMatchValidator });
   }
@@ -119,30 +155,76 @@ export class RegisterComponent implements OnInit {
   passwordMatchValidator(g: FormGroup) {
     const pass = g.get('password')?.value;
     const confirm = g.get('confirmPassword')?.value;
-    if (pass !== confirm) {
-      g.get('confirmPassword')?.setErrors({ mismatch: true });
-    }
-    return null;
+    return pass === confirm ? null : { mismatch: true };
   }
 
   get f() { return this.registerForm.controls; }
 
   onSubmit() {
     this.submitted = true;
+    this.errorMessage = '';
+    this.successMessage = '';
 
     if (this.registerForm.invalid) {
       return;
     }
 
     this.loading = true;
-    this.authService.register(this.registerForm.value)
+    const val = this.registerForm.value;
+
+    const payload = {
+      username: val.username,
+      password: val.password,
+      firstName: val.prenom,
+      lastName: val.nom,
+      email: val.email,
+      birthDate: val.birthDate,
+      gender: val.gender,
+      address: val.address,
+      phoneNumber: val.phoneNumber,
+      nationality: val.nationality
+    };
+
+    this.authService.register(payload)
+      .pipe(
+        finalize(() => {
+          // On ne met loading a false ici que si on n'enchaîne pas sur le login
+          // Mais par sécurité et respect des consignes, on le gère dans les sous-appels
+        })
+      )
+      .subscribe({
+        next: (response) => {
+          this.successMessage = "Inscription réussie ! Connexion en cours...";
+          // Enchaîner sur la connexion automatique
+          this.performAutoLogin(val.username, val.password);
+        },
+        error: (err) => {
+          this.loading = false;
+          console.error('Register error:', err);
+          this.errorMessage = err.error?.message || err.message || "Une erreur est survenue lors de l'inscription.";
+        }
+      });
+  }
+
+  private performAutoLogin(username: string, password: string) {
+    this.authService.login(username, password)
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+        })
+      )
       .subscribe({
         next: () => {
-          alert("Compte créé avec succès ! Bienvenue chez Egabank.");
           this.router.navigate(['/client/dashboard']);
         },
-        error: () => {
-          this.loading = false;
+        error: (err) => {
+          console.error('Auto-login failed:', err);
+          this.successMessage = "Compte créé ! Veuillez vous connecter manuellement.";
+          setTimeout(() => {
+            this.router.navigate(['/auth/login'], {
+              queryParams: { registered: true, username: username }
+            });
+          }, 2000);
         }
       });
   }

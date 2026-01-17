@@ -1,77 +1,69 @@
 import { Injectable } from '@angular/core';
-import { Observable, of, delay } from 'rxjs';
-import { Client } from '../models/bank.models';
+import { HttpClient } from '@angular/common/http';
+import { Observable, map } from 'rxjs';
+import { Client, mapClientFromBackend } from '../models/bank.models';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class ClientService {
-    private clients: Client[] = [
-        {
-            id: '1',
-            nom: 'Rahman',
-            prenom: 'Sajibur',
-            dateNaissance: new Date(1990, 5, 15),
-            sexe: 'M',
-            adresse: '123 Avenue de Paris, 75001 Paris',
-            telephone: '+33 6 12 34 56 78',
-            email: 'sajibur@bank.com',
-            nationalite: 'Française',
-            dateInscription: new Date(2023, 0, 1),
-            statut: 'Actif'
-        },
-        {
-            id: '2',
-            nom: 'Watkins',
-            prenom: 'Dorothy',
-            dateNaissance: new Date(1985, 10, 22),
-            sexe: 'F',
-            adresse: '45 High Street, London',
-            telephone: '+33 7 88 99 00 11',
-            email: 'dorothy@bank.com',
-            nationalite: 'Britannique',
-            dateInscription: new Date(2023, 2, 10),
-            statut: 'Actif'
-        }
-    ];
+    private apiUrl = `${environment.apiUrl}/clients`;
 
+    constructor(private http: HttpClient) { }
+
+    // Admin: Liste tous les clients
     getClients(): Observable<Client[]> {
-        return of(this.clients).pipe(delay(500));
+        return this.http.get<any[]>(this.apiUrl).pipe(
+            map(clients => clients.map(mapClientFromBackend))
+        );
     }
 
-    getClientById(id: string): Observable<Client | undefined> {
-        return of(this.clients.find(c => c.id === id)).pipe(delay(300));
+    createClient(clientData: any): Observable<Client> {
+        // Souvent géré par POST /clients en admin
+        return this.http.post<any>(this.apiUrl, clientData).pipe(
+            map(mapClientFromBackend)
+        );
+    }
+
+    // Client: Consulter mon profil
+    getClientMe(): Observable<Client> {
+        return this.http.get<any>(`${this.apiUrl}/me`).pipe(
+            map(mapClientFromBackend)
+        );
+    }
+
+    getClientById(id: string): Observable<Client> {
+        return this.http.get<any>(`${this.apiUrl}/${id}`).pipe(
+            map(mapClientFromBackend)
+        );
+    }
+
+    updateClient(id: string, clientData: any): Observable<Client> {
+        // Le backend attend firstName, lastName, etc.
+        const body = {
+            firstName: clientData.prenom || clientData.firstName,
+            lastName: clientData.nom || clientData.lastName,
+            email: clientData.email,
+            address: clientData.adresse || clientData.address
+        };
+        return this.http.put<any>(`${this.apiUrl}/${id}`, body).pipe(
+            map(mapClientFromBackend)
+        );
     }
 
     searchClients(term: string): Observable<Client[]> {
-        const lowerTerm = term.toLowerCase();
-        return of(this.clients.filter(c =>
-            c.nom.toLowerCase().includes(lowerTerm) ||
-            c.prenom.toLowerCase().includes(lowerTerm) ||
-            c.email.toLowerCase().includes(lowerTerm)
-        )).pipe(delay(300));
+        return this.getClients().pipe(
+            map(clients => {
+                const lowerTerm = term.toLowerCase();
+                return clients.filter(c =>
+                    c.nom.toLowerCase().includes(lowerTerm) ||
+                    c.prenom.toLowerCase().includes(lowerTerm) ||
+                    c.email.toLowerCase().includes(lowerTerm)
+                );
+            })
+        );
     }
 
-    createClient(client: Omit<Client, 'id' | 'dateInscription' | 'statut'>): Observable<Client> {
-        const newClient: Client = {
-            ...client,
-            id: Math.random().toString(36).substr(2, 9),
-            dateInscription: new Date(),
-            statut: 'Actif'
-        };
-        this.clients.push(newClient);
-        return of(newClient).pipe(delay(500));
-    }
-
-    updateClient(id: string, clientData: Partial<Client>): Observable<Client> {
-        const index = this.clients.findIndex(c => c.id === id);
-        if (index !== -1) {
-            this.clients[index] = { ...this.clients[index], ...clientData };
-            return of(this.clients[index]).pipe(delay(500));
-        }
-        throw new Error('Client not found');
-    }
-
-    deleteClient(id: string): Observable<boolean> {
-        this.clients = this.clients.filter(c => c.id !== id);
-        return of(true).pipe(delay(500));
+    deleteClient(id: string): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/${id}`);
     }
 }

@@ -4,14 +4,14 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CompteService } from '../../../shared/services/compte.service';
 import { TransactionService } from '../../../shared/services/transaction.service';
 import { Compte, Transaction } from '../../../shared/models/bank.models';
-import { Observable, forkJoin } from 'rxjs';
+import { Observable, forkJoin, of } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 
 @Component({
-    selector: 'app-compte-detail',
-    standalone: true,
-    imports: [CommonModule, RouterLink, FormsModule],
-    template: `
+  selector: 'app-compte-detail',
+  standalone: true,
+  imports: [CommonModule, RouterLink, FormsModule],
+  template: `
     <div class="d-flex justify-content-between align-items-center mb-4 text-dark">
       <h2 class="fw-bold">Gestion du Compte</h2>
       <button class="btn btn-light" [routerLink]="['/admin/comptes']">Retour</button>
@@ -124,65 +124,67 @@ import { FormsModule } from '@angular/forms';
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     .bg-success-subtle { background-color: #e8f5e9; }
     .bg-danger-subtle { background-color: #ffebee; }
   `]
 })
 export class CompteDetailComponent implements OnInit {
-    compteId: string | null = null;
-    data$: Observable<{ compte: Compte, transactions: Transaction[] }> | undefined;
+  compteId: string | null = null;
+  data$: Observable<{ compte: Compte, transactions: Transaction[] }> | undefined;
 
-    currentOperation: 'DEPOT' | 'RETRAIT' | null = null;
-    opMontant: number = 0;
-    opDescription: string = '';
+  currentOperation: 'DEPOT' | 'RETRAIT' | null = null;
+  opMontant: number = 0;
+  opDescription: string = '';
 
-    constructor(
-        private route: ActivatedRoute,
-        private compteService: CompteService,
-        private transactionService: TransactionService
-    ) { }
+  constructor(
+    private route: ActivatedRoute,
+    private compteService: CompteService,
+    private transactionService: TransactionService
+  ) { }
 
-    ngOnInit(): void {
-        this.compteId = this.route.snapshot.paramMap.get('id');
-        if (this.compteId) {
-            this.loadData();
+  ngOnInit(): void {
+    this.compteId = this.route.snapshot.paramMap.get('id');
+    if (this.compteId) {
+      this.loadData();
+    }
+  }
+
+  loadData() {
+    if (this.compteId) {
+      this.compteService.getCompteById(this.compteId).subscribe(compte => {
+        if (compte) {
+          this.data$ = forkJoin({
+            compte: of(compte),
+            transactions: this.transactionService.getTransactions({ compteId: compte.numeroCompte })
+          }) as Observable<{ compte: Compte, transactions: Transaction[] }>;
         }
+      });
     }
+  }
 
-    loadData() {
-        this.data$ = forkJoin({
-            compte: this.compteService.getCompteById(this.compteId!),
-            transactions: this.transactionService.getTransactions({ compteId: this.compteId })
-        }) as Observable<{ compte: Compte, transactions: Transaction[] }>;
-    }
+  setOperation(type: 'DEPOT' | 'RETRAIT') {
+    this.currentOperation = type;
+    this.opMontant = 0;
+    this.opDescription = type === 'DEPOT' ? 'Dépôt espèce' : 'Retrait espèce';
+  }
 
-    setOperation(type: 'DEPOT' | 'RETRAIT') {
-        this.currentOperation = type;
-        this.opMontant = 0;
-        this.opDescription = type === 'DEPOT' ? 'Dépôt espèce' : 'Retrait espèce';
-    }
+  confirmOperation(compte: Compte) {
+    if (this.opMontant <= 0) return alert("Veuillez saisir un montant valide");
 
-    confirmOperation(compte: Compte) {
-        if (this.opMontant <= 0) return alert("Veuillez saisir un montant valide");
+    const obs = this.currentOperation === 'DEPOT' ?
+      this.transactionService.deposit(compte.numeroCompte, this.opMontant, this.opDescription) :
+      this.transactionService.withdraw(compte.numeroCompte, this.opMontant, this.opDescription);
 
-        if (this.currentOperation === 'RETRAIT' && compte.solde < this.opMontant) {
-            return alert("Solde insuffisant !");
-        }
-
-        const m = this.currentOperation === 'DEPOT' ? this.opMontant : -this.opMontant;
-
-        this.compteService.updateSolde(compte.id, m).subscribe(() => {
-            this.transactionService.createTransaction({
-                type: this.currentOperation!,
-                montant: this.opMontant,
-                description: this.opDescription,
-                [this.currentOperation === 'DEPOT' ? 'compteDestination' : 'compteSource']: compte.id
-            }).subscribe(() => {
-                alert("Opération réussie !");
-                this.currentOperation = null;
-                this.loadData();
-            });
-        });
-    }
+    obs.subscribe({
+      next: () => {
+        alert("Opération réussie !");
+        this.currentOperation = null;
+        this.loadData();
+      },
+      error: (err) => {
+        alert("Erreur: " + (err.error?.message || err.message));
+      }
+    });
+  }
 }

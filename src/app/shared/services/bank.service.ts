@@ -1,24 +1,40 @@
 import { Injectable } from '@angular/core';
-import { Observable, of, delay } from 'rxjs';
-import { Transaction } from '../models/bank.models';
+import { HttpClient } from '@angular/common/http';
+import { Observable, forkJoin, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
+import { Transaction, mapTransactionFromBackend } from '../models/bank.models';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class BankService {
-    getDashboardStats() {
-        return of([
-            { label: 'Total Clients', value: '1,250' },
-            { label: 'Total Comptes', value: '3,420' },
-            { label: 'Total Transactions', value: '84,849' },
-            { label: 'Revenue Mensuel', value: '15,490 €' }
-        ]).pipe(delay(300));
+    private apiUrl = environment.apiUrl;
+
+    constructor(private http: HttpClient) { }
+
+    // Dashboard Admin : On essaie d'agréger les données si /admin/stats n'existe pas
+    getDashboardStats(): Observable<any[]> {
+        return forkJoin({
+            clients: this.http.get<any[]>(`${this.apiUrl}/clients`).pipe(catchError(() => of([]))),
+            accounts: this.http.get<any[]>(`${this.apiUrl}/accounts`).pipe(catchError(() => of([]))),
+            transactions: this.http.get<any[]>(`${this.apiUrl}/transactions`).pipe(catchError(() => of([])))
+        }).pipe(
+            map(res => {
+                const totalBalance = res.accounts.reduce((sum, acc) => sum + (acc.solde || 0), 0);
+                return [
+                    { label: 'Total Clients', value: res.clients.length },
+                    { label: 'Total Comptes', value: res.accounts.length },
+                    { label: 'Total Transactions', value: res.transactions.length },
+                    { label: 'Capital Total', value: totalBalance.toLocaleString() + ' €' }
+                ];
+            })
+        );
     }
 
     getRecentTransactions(): Observable<Transaction[]> {
-        const transactions: Transaction[] = [
-            { id: 'T1', type: 'DEPOT', montant: 2500, date: new Date(), description: 'Salaire', statut: 'SUCCESS' },
-            { id: 'T2', type: 'VIREMENT', montant: 102.99, date: new Date(), description: 'Netflix & Spotify', statut: 'SUCCESS' },
-            { id: 'T3', type: 'RETRAIT', montant: 80, date: new Date(), description: 'ATM Paris', statut: 'SUCCESS' }
-        ];
-        return of(transactions).pipe(delay(400));
+        // Liste globale des transactions (Admin)
+        return this.http.get<any[]>(`${this.apiUrl}/transactions`).pipe(
+            map(items => (items || []).slice(0, 10).map(mapTransactionFromBackend)),
+            catchError(() => of([]))
+        );
     }
 }

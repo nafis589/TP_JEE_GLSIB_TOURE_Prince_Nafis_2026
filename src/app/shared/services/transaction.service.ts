@@ -1,50 +1,70 @@
 import { Injectable } from '@angular/core';
-import { Observable, of, delay } from 'rxjs';
-import { Transaction } from '../models/bank.models';
+import { HttpClient } from '@angular/common/http';
+import { Observable, map } from 'rxjs';
+import { Transaction, mapTransactionFromBackend } from '../models/bank.models';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class TransactionService {
-    private transactions: Transaction[] = [
-        {
-            id: 'T1',
-            date: new Date(),
-            type: 'DEPOT',
-            montant: 500,
-            description: 'Dépôt espèce guichet',
-            compteDestination: 'C1',
-            statut: 'SUCCESS'
-        },
-        {
-            id: 'T2',
-            date: new Date(Date.now() - 86400000),
-            type: 'VIREMENT',
-            montant: 120,
-            description: 'Virement loyer',
-            compteSource: 'C1',
-            compteDestination: 'C99',
-            statut: 'SUCCESS'
-        }
-    ];
+    private apiUrl = `${environment.apiUrl}/transactions`;
 
+    constructor(private http: HttpClient) { }
+
+    // Admin: Historique général ou filtré
     getTransactions(filters?: any): Observable<Transaction[]> {
-        let filtered = [...this.transactions];
-        if (filters) {
-            if (filters.type) filtered = filtered.filter(t => t.type === filters.type);
-            if (filters.compteId) {
-                filtered = filtered.filter(t => t.compteSource === filters.compteId || t.compteDestination === filters.compteId);
-            }
+        let url = this.apiUrl;
+        if (filters?.compteId) {
+            // Utilise l'historique par IBAN si fourni
+            return this.getHistory(filters.compteId, filters.start, filters.end);
         }
-        return of(filtered.sort((a, b) => b.date.getTime() - a.date.getTime())).pipe(delay(500));
+        return this.http.get<any[]>(url).pipe(
+            map(items => items.map(mapTransactionFromBackend))
+        );
     }
 
-    createTransaction(t: Omit<Transaction, 'id' | 'date' | 'statut'>): Observable<Transaction> {
-        const newTransaction: Transaction = {
-            ...t,
-            id: 'T' + Math.floor(Math.random() * 10000),
-            date: new Date(),
-            statut: 'SUCCESS'
-        };
-        this.transactions.push(newTransaction);
-        return of(newTransaction).pipe(delay(500));
+    // Client: Historique par IBAN
+    getHistory(iban: string, start?: string, end?: string): Observable<Transaction[]> {
+        let url = `${this.apiUrl}/history/${iban}`;
+        if (start && end) {
+            url += `?start=${start}&end=${end}`;
+        }
+        return this.http.get<any[]>(url).pipe(
+            map(items => items.map(mapTransactionFromBackend))
+        );
+    }
+
+    // Admin: Dépôt
+    deposit(accountNumber: string, amount: number, description: string): Observable<Transaction> {
+        return this.http.post<any>(`${this.apiUrl}/deposit`, {
+            accountNumber,
+            amount,
+            description
+        }).pipe(map(mapTransactionFromBackend));
+    }
+
+    // Admin: Retrait
+    withdraw(accountNumber: string, amount: number, description: string): Observable<Transaction> {
+        return this.http.post<any>(`${this.apiUrl}/withdraw`, {
+            accountNumber,
+            amount,
+            description
+        }).pipe(map(mapTransactionFromBackend));
+    }
+
+    // Client: Virement
+    transfer(accountNumber: string, targetAccountNumber: string, amount: number, description: string): Observable<Transaction> {
+        return this.http.post<any>(`${this.apiUrl}/transfer`, {
+            accountNumber,
+            targetAccountNumber,
+            amount,
+            description
+        }).pipe(map(mapTransactionFromBackend));
+    }
+
+    // Pour compatibilité avec l'ancien code
+    createTransaction(t: any): Observable<Transaction> {
+        if (t.type === 'DEPOT') return this.deposit(t.accountNumber, t.montant, t.description);
+        if (t.type === 'RETRAIT') return this.withdraw(t.accountNumber, t.montant, t.description);
+        return this.transfer(t.accountNumber, t.compteDestination, t.montant, t.description);
     }
 }

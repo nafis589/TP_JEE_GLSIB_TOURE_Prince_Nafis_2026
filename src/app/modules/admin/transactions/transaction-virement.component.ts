@@ -8,10 +8,10 @@ import { Observable } from 'rxjs';
 import { Router, RouterLink } from '@angular/router';
 
 @Component({
-    selector: 'app-transaction-virement',
-    standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, RouterLink],
-    template: `
+  selector: 'app-transaction-virement',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  template: `
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h2 class="fw-bold">Nouveau Virement</h2>
       <button class="btn btn-light" [routerLink]="['/admin/transactions']">Retour</button>
@@ -24,7 +24,7 @@ import { Router, RouterLink } from '@angular/router';
             <label class="form-label fw-bold">Compte Source</label>
             <select class="form-select form-select-lg" formControlName="compteSource">
               <option value="">Sélectionner le compte à débiter</option>
-              <option *ngFor="let c of comptes$ | async" [value]="c.id">
+              <option *ngFor="let c of comptes$ | async" [value]="c.numeroCompte">
                 {{ c.numeroCompte }} - {{ c.clientNom }} ({{ c.solde | currency:'EUR' }})
               </option>
             </select>
@@ -38,7 +38,7 @@ import { Router, RouterLink } from '@angular/router';
             <label class="form-label fw-bold">Compte Destination</label>
             <select class="form-select form-select-lg" formControlName="compteDestination">
               <option value="">Sélectionner le compte à créditer</option>
-              <option *ngFor="let c of comptes$ | async" [value]="c.id">
+              <option *ngFor="let c of comptes$ | async" [value]="c.numeroCompte">
                 {{ c.numeroCompte }} - {{ c.clientNom }}
               </option>
             </select>
@@ -67,61 +67,48 @@ import { Router, RouterLink } from '@angular/router';
   `
 })
 export class TransactionVirementComponent implements OnInit {
-    virementForm: FormGroup;
-    comptes$: Observable<Compte[]>;
-    isLoading = false;
+  virementForm: FormGroup;
+  comptes$: Observable<Compte[]>;
+  isLoading = false;
 
-    constructor(
-        private fb: FormBuilder,
-        private compteService: CompteService,
-        private transactionService: TransactionService,
-        private router: Router
-    ) {
-        this.comptes$ = this.compteService.getComptes();
-        this.virementForm = this.fb.group({
-            compteSource: ['', Validators.required],
-            compteDestination: ['', Validators.required],
-            montant: [null, [Validators.required, Validators.min(1)]],
-            description: ['Virement de compte à compte', Validators.required]
-        }, { validators: this.differentAccountsValidator });
-    }
+  constructor(
+    private fb: FormBuilder,
+    private compteService: CompteService,
+    private transactionService: TransactionService,
+    private router: Router
+  ) {
+    this.comptes$ = this.compteService.getComptes();
+    this.virementForm = this.fb.group({
+      compteSource: ['', Validators.required],
+      compteDestination: ['', Validators.required],
+      montant: [null, [Validators.required, Validators.min(1)]],
+      description: ['Virement de compte à compte', Validators.required]
+    }, { validators: this.differentAccountsValidator });
+  }
 
-    ngOnInit(): void { }
+  ngOnInit(): void { }
 
-    differentAccountsValidator(group: FormGroup) {
-        const src = group.get('compteSource')?.value;
-        const dst = group.get('compteDestination')?.value;
-        return src && dst && src === dst ? { sameAccounts: true } : null;
-    }
+  differentAccountsValidator(group: FormGroup) {
+    const src = group.get('compteSource')?.value;
+    const dst = group.get('compteDestination')?.value;
+    return src && dst && src === dst ? { sameAccounts: true } : null;
+  }
 
-    onSubmit() {
-        if (this.virementForm.valid) {
-            const { compteSource, compteDestination, montant, description } = this.virementForm.value;
+  onSubmit() {
+    if (this.virementForm.valid) {
+      const { compteSource, compteDestination, montant, description } = this.virementForm.value;
+      this.isLoading = true;
 
-            this.isLoading = true;
-            // Simulation virement
-            this.compteService.getCompteById(compteSource).subscribe(src => {
-                if (src && src.solde >= montant) {
-                    // Effectuer le transfert
-                    this.compteService.updateSolde(compteSource, -montant).subscribe(() => {
-                        this.compteService.updateSolde(compteDestination, montant).subscribe(() => {
-                            this.transactionService.createTransaction({
-                                type: 'VIREMENT',
-                                montant,
-                                description,
-                                compteSource,
-                                compteDestination
-                            }).subscribe(() => {
-                                alert("Virement effectué avec succès !");
-                                this.router.navigate(['/admin/transactions']);
-                            });
-                        });
-                    });
-                } else {
-                    alert("Solde insuffisant !");
-                    this.isLoading = false;
-                }
-            });
+      this.transactionService.transfer(compteSource, compteDestination, montant, description).subscribe({
+        next: () => {
+          alert("Virement effectué avec succès !");
+          this.router.navigate(['/admin/transactions']);
+        },
+        error: (err) => {
+          alert("Erreur: " + (err.error?.message || err.message));
+          this.isLoading = false;
         }
+      });
     }
+  }
 }

@@ -141,15 +141,25 @@ export class ClientRelevésComponent implements OnInit {
   generate() {
     this.isLoading = true;
     this.clientBankService.getAccountById(this.selectedCompteId).subscribe(acc => {
-      this.selectedCompteNumero = acc?.numeroCompte || '';
-      this.clientBankService.generateReleve(
-        this.selectedCompteId,
-        new Date(this.dateDebut),
-        new Date(this.dateFin)
-      ).subscribe(res => {
-        this.releve = res;
+      if (acc) {
+        this.selectedCompteNumero = acc.numeroCompte;
+        this.clientBankService.generateReleve(
+          acc.numeroCompte,
+          new Date(this.dateDebut),
+          new Date(this.dateFin)
+        ).subscribe({
+          next: (res) => {
+            this.releve = res;
+            this.isLoading = false;
+          },
+          error: () => {
+            this.isLoading = false;
+            alert("Erreur lors de la génération du relevé");
+          }
+        });
+      } else {
         this.isLoading = false;
-      });
+      }
     });
   }
 

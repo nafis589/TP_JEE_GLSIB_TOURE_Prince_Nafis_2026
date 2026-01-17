@@ -3,13 +3,13 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ClientBankService } from '../../../shared/services/client-bank.service';
 import { Compte, Transaction } from '../../../shared/models/bank.models';
-import { Observable, forkJoin, map } from 'rxjs';
+import { Observable, forkJoin, map, of } from 'rxjs';
 
 @Component({
-    selector: 'app-client-compte-detail',
-    standalone: true,
-    imports: [CommonModule, RouterLink],
-    template: `
+  selector: 'app-client-compte-detail',
+  standalone: true,
+  imports: [CommonModule, RouterLink],
+  template: `
     <div class="container py-4" *ngIf="data$ | async as data">
       <div class="d-flex justify-content-between align-items-center mb-4 text-dark">
         <div>
@@ -41,7 +41,7 @@ import { Observable, forkJoin, map } from 'rxjs';
               <div class="fw-bold">{{ data.compte.clientNom }}</div>
             </div>
             <div class="d-grid mt-auto">
-              <button class="btn btn-primary" [routerLink]="['/client/virement']" [queryParams]="{from: data.compte.id}">
+              <button class="btn btn-primary" [routerLink]="['/client/virement']" [queryParams]="{from: data.compte.numeroCompte}">
                 Faire un virement depuis ce compte
               </button>
             </div>
@@ -83,27 +83,29 @@ import { Observable, forkJoin, map } from 'rxjs';
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     .bg-success-subtle { background-color: #e8f5e9 !important; }
   `]
 })
 export class ClientCompteDetailComponent implements OnInit {
-    data$: Observable<{ compte: Compte, transactions: Transaction[] }> | undefined;
+  data$: Observable<{ compte: Compte, transactions: Transaction[] }> | undefined;
 
-    constructor(
-        private route: ActivatedRoute,
-        private clientBankService: ClientBankService
-    ) { }
+  constructor(
+    private route: ActivatedRoute,
+    private clientBankService: ClientBankService
+  ) { }
 
-    ngOnInit(): void {
-        const id = this.route.snapshot.paramMap.get('id');
-        if (id) {
-            this.data$ = forkJoin({
-                compte: this.clientBankService.getAccountById(id).pipe(map(a => a!)),
-                transactions: this.clientBankService.getTransactions().pipe(
-                    map(transactions => transactions.filter(t => t.compteSource === id || t.compteDestination === id))
-                )
-            });
+  ngOnInit(): void {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) {
+      this.clientBankService.getAccountById(id).subscribe(compte => {
+        if (compte) {
+          this.data$ = forkJoin({
+            compte: of(compte),
+            transactions: this.clientBankService.getTransactions({ compteId: compte.numeroCompte })
+          });
         }
+      });
     }
+  }
 }

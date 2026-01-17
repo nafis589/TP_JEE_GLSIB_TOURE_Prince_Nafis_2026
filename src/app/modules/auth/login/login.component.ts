@@ -1,8 +1,10 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, NgZone, PLATFORM_ID, Inject } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
+import { finalize } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-login',
@@ -10,17 +12,24 @@ import { AuthService } from '../../../core/auth/auth.service';
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   template: `
     <div class="auth-wrapper d-flex align-items-center justify-content-center min-vh-100">
-      <div class="card border-0 p-4 p-md-5" style="max-width: 450px; width: 100%;">
+      <div class="card border-0 p-4 p-md-5 shadow-sm" style="max-width: 450px; width: 100%;">
         <div class="text-center mb-5">
           <h1 class="fw-bold text-success mb-2">EgaBank</h1>
           <p class="text-muted">Accédez à votre espace sécurisé</p>
         </div>
 
-        <div *ngIf="error" class="alert alert-danger border-0 small mb-4">
-          <i class="bi bi-exclamation-circle me-2"></i> {{ error }}
+        <!-- Alertes de Message -->
+        <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show border-0 small mb-4" role="alert">
+          <i class="bi bi-exclamation-circle me-2"></i> {{ errorMessage }}
+          <button type="button" class="btn-close small" (click)="errorMessage = ''" aria-label="Close"></button>
         </div>
 
-        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+        <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show border-0 small mb-4" role="alert">
+          <i class="bi bi-check-circle me-2"></i> {{ successMessage }}
+          <button type="button" class="btn-close small" (click)="successMessage = ''" aria-label="Close"></button>
+        </div>
+
+        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
           <div class="mb-4">
             <label class="form-label fw-bold small text-dark">Identifiant</label>
             <div class="input-group">
@@ -60,9 +69,9 @@ import { AuthService } from '../../../core/auth/auth.service';
           </div>
 
           <div class="d-grid gap-2">
-            <button type="submit" class="btn btn-success btn-lg fw-bold shadow-sm p-3" [disabled]="loading">
-              <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
-              Se connecter
+            <button type="submit" class="btn btn-success btn-lg fw-bold shadow-sm p-3" [disabled]="loading || loginForm.invalid">
+              <span *ngIf="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              {{ loading ? 'Connexion...' : 'Se connecter' }}
             </button>
           </div>
         </form>
@@ -73,7 +82,7 @@ import { AuthService } from '../../../core/auth/auth.service';
           </p>
         </div>
 
-        <!-- Infos de test (Astuce pédagogique) -->
+        <!-- Infos de test -->
         <div class="mt-4 p-3 bg-light rounded-3 border">
           <p class="small fw-bold mb-1 text-dark">Identifiants de test :</p>
           <ul class="small text-muted mb-0 ps-3">
@@ -98,19 +107,25 @@ import { AuthService } from '../../../core/auth/auth.service';
     }
   `]
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent implements OnInit, OnDestroy {
   loginForm: FormGroup;
   loading = false;
   submitted = false;
-  error = '';
-  returnUrl: string = '';
+  errorMessage = '';
+  successMessage = '';
+  private isBrowser: boolean;
+  private loginSubscription: Subscription | null = null;
 
   constructor(
     private formBuilder: FormBuilder,
     private route: ActivatedRoute,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef,
+    private ngZone: NgZone,
+    @Inject(PLATFORM_ID) private platformId: Object
   ) {
+    this.isBrowser = isPlatformBrowser(this.platformId);
     this.loginForm = this.formBuilder.group({
       username: ['', Validators.required],
       password: ['', Validators.required]
@@ -118,36 +133,99 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
+    // Ne pas exécuter côté serveur
+    if (!this.isBrowser) {
+      return;
+    }
+
+    // Vérifier si on vient d'une inscription réussie
+    if (this.route.snapshot.queryParams['registered']) {
+      this.successMessage = "Votre compte a été créé avec succès ! Vous pouvez maintenant vous connecter.";
+      if (this.route.snapshot.queryParams['username']) {
+        this.loginForm.patchValue({ username: this.route.snapshot.queryParams['username'] });
+      }
+    }
 
     // Si déjà connecté, rediriger
     if (this.authService.isAuthenticated()) {
-      const role = this.authService.getUserRole();
-      this.router.navigate([role === 'ADMIN' ? '/admin/dashboard' : '/client/dashboard']);
+      this.redirectByRole();
+    }
+  }
+
+  ngOnDestroy() {
+    // Nettoyer la souscription pour éviter les fuites de mémoire
+    if (this.loginSubscription) {
+      this.loginSubscription.unsubscribe();
     }
   }
 
   get f() { return this.loginForm.controls; }
 
   onSubmit() {
+    // Protection contre la soumission côté serveur
+    if (!this.isBrowser) {
+      return;
+    }
+
+    // Protection contre les doubles soumissions
+    if (this.loading) {
+      console.log('Soumission bloquée - déjà en cours');
+      return;
+    }
+
     this.submitted = true;
-    this.error = '';
+    this.errorMessage = '';
+    this.successMessage = '';
 
     if (this.loginForm.invalid) {
       return;
     }
 
+    // Annuler toute souscription précédente
+    if (this.loginSubscription) {
+      this.loginSubscription.unsubscribe();
+    }
+
     this.loading = true;
-    this.authService.login(this.f['username'].value, this.f['password'].value)
+    this.cdr.detectChanges(); // Forcer la mise à jour immédiate
+
+    this.loginSubscription = this.authService.login(this.f['username'].value, this.f['password'].value)
+      .pipe(
+        finalize(() => {
+          // Utiliser NgZone.run() pour garantir l'exécution dans la zone Angular
+          this.ngZone.run(() => {
+            console.log('FINALIZE EXECUTED - Browser:', this.isBrowser);
+            this.loading = false;
+            this.cdr.detectChanges(); // Forcer la mise à jour du template
+          });
+        })
+      )
       .subscribe({
         next: (user) => {
-          const redirectPath = user.role === 'ADMIN' ? '/admin/dashboard' : '/client/dashboard';
-          this.router.navigate([redirectPath]);
+          this.ngZone.run(() => {
+            this.successMessage = "Connexion réussie !";
+            this.cdr.detectChanges();
+            this.redirectByRole();
+          });
         },
         error: (err) => {
-          this.error = err.message || 'Échec de la connexion';
-          this.loading = false;
+          this.ngZone.run(() => {
+            console.error('Login error:', err);
+            if (err.status === 0) {
+              this.errorMessage = "Impossible de contacter le serveur. Veuillez vérifier votre connexion.";
+            } else {
+              this.errorMessage = err.error?.message || err.message || "Identifiants incorrects ou erreur serveur.";
+            }
+            this.cdr.detectChanges(); // Forcer la mise à jour du template
+          });
         }
       });
   }
+
+  private redirectByRole() {
+    const role = this.authService.getUserRole();
+    const path = role === 'ADMIN' ? '/admin/dashboard' : '/client/dashboard';
+    this.router.navigate([path]);
+  }
 }
+
