@@ -31,6 +31,10 @@ public class AccountService {
         Client owner = clientRepository.findById(dto.clientId())
                 .orElseThrow(() -> new ResourceNotFoundException("Client introuvable avec l'ID: " + dto.clientId()));
 
+        if (owner.getStatus() == com.ega.bank_backend.entity.ClientStatus.SUSPENDED) {
+            throw new IllegalArgumentException("Impossible de créer un compte pour un client suspendu");
+        }
+
         Account account = new Account();
         account.setAccountType(dto.accountType());
         account.setOwner(owner);
@@ -76,6 +80,7 @@ public class AccountService {
                 account.getAccountType(),
                 account.getBalance(),
                 account.getCreatedAt(),
-                account.getOwner().getFirstName() + " " + account.getOwner().getLastName());
+                account.getOwner().getFirstName() + " " + account.getOwner().getLastName(),
+                account.getOwner().getId());
     }
 }

@@ -36,6 +36,9 @@ public class Client {
 
     private String nationality;
 
+    @Enumerated(EnumType.STRING)
+    private ClientStatus status = ClientStatus.ACTIVE;
+
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Account> accounts = new ArrayList<>();
 
@@ -122,6 +125,14 @@ public class Client {
 
     public void setAccounts(List<Account> accounts) {
         this.accounts = accounts;
+    }
+
+    public ClientStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ClientStatus status) {
+        this.status = status;
     }
 
     public AppUser getUser() {

@@ -28,6 +28,9 @@ public class TransactionService {
 
     public void deposit(TransactionRequestDTO dto) {
         Account account = getAccount(dto.accountNumber());
+        if (account.getOwner().getStatus() == com.ega.bank_backend.entity.ClientStatus.SUSPENDED) {
+            throw new IllegalArgumentException("Opération impossible : Client suspendu");
+        }
         account.setBalance(account.getBalance().add(dto.amount()));
 
         Transaction transaction = new Transaction();
@@ -42,6 +45,9 @@ public class TransactionService {
 
     public void withdraw(TransactionRequestDTO dto) {
         Account account = getAccount(dto.accountNumber());
+        if (account.getOwner().getStatus() == com.ega.bank_backend.entity.ClientStatus.SUSPENDED) {
+            throw new IllegalArgumentException("Opération impossible : Client suspendu");
+        }
         if (account.getBalance().compareTo(dto.amount()) < 0) {
             throw new InsufficientBalanceException(
                     "Solde insuffisant pour le retrait sur le compte " + dto.accountNumber());
@@ -65,7 +71,17 @@ public class TransactionService {
         }
 
         Account sourceAccount = getAccount(dto.accountNumber());
+        if (sourceAccount.getOwner().getStatus() == com.ega.bank_backend.entity.ClientStatus.SUSPENDED) {
+            throw new IllegalArgumentException("Opération impossible : Client émetteur suspendu");
+        }
+
         Account targetAccount = getAccount(dto.targetAccountNumber());
+        // Should we check target account owner status too? Requirement says "Bloquer
+        // les opérations... si le client est suspendu". Usually implies the initiator.
+        // But if target is suspended, maybe they shouldn't receive? Let's stick to
+        // initiator (source) for now unless specified.
+        // Actually, for deposit/withdraw it's clear. For transfer, the "client" usually
+        // refers to the one initiating the action.
 
         if (sourceAccount.getBalance().compareTo(dto.amount()) < 0) {
             throw new InsufficientBalanceException("Solde insuffisant pour le virement");
@@ -97,6 +113,7 @@ public class TransactionService {
 
     public List<Transaction> getHistory(String accountNumber, LocalDateTime start, LocalDateTime end) {
         Account account = getAccount(accountNumber);
+
         return transactionRepository.findByAccountIdAndTimestampBetween(account.getId(), start, end);
     }
 

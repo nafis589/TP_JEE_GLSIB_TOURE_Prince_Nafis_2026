@@ -64,6 +64,20 @@ public class ClientService {
         clientRepository.deleteById(id);
     }
 
+    public void suspendClient(Long id) {
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Client introuvable avec l'ID: " + id));
+        client.setStatus(com.ega.bank_backend.entity.ClientStatus.SUSPENDED);
+        clientRepository.save(client);
+    }
+
+    public void activateClient(Long id) {
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Client introuvable avec l'ID: " + id));
+        client.setStatus(com.ega.bank_backend.entity.ClientStatus.ACTIVE);
+        clientRepository.save(client);
+    }
+
     private void mapToEntity(ClientRequestDTO dto, Client client) {
         client.setFirstName(dto.firstName());
         client.setLastName(dto.lastName());
@@ -83,7 +97,8 @@ public class ClientService {
                         acc.getAccountType(),
                         acc.getBalance(),
                         acc.getCreatedAt(),
-                        client.getFirstName() + " " + client.getLastName()))
+                        client.getFirstName() + " " + client.getLastName(),
+                        client.getId()))
                 .collect(Collectors.toList());
 
         return new ClientResponseDTO(

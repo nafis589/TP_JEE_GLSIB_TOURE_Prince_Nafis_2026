@@ -51,6 +51,20 @@ public class ClientController {
         return clientService.updateClient(id, dto);
     }
 
+    @PutMapping("/{id}/suspend")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> suspendClient(@PathVariable Long id) {
+        clientService.suspendClient(id);
+        return ResponseEntity.ok().body("{\"message\": \"Client suspendu avec succès\"}");
+    }
+
+    @PutMapping("/{id}/activate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> activateClient(@PathVariable Long id) {
+        clientService.activateClient(id);
+        return ResponseEntity.ok().body("{\"message\": \"Client réactivé avec succès\"}");
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
