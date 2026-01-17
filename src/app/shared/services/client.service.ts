@@ -66,4 +66,12 @@ export class ClientService {
     deleteClient(id: string): Observable<any> {
         return this.http.delete(`${this.apiUrl}/${id}`);
     }
+
+    suspendClient(id: string): Observable<any> {
+        return this.http.put(`${this.apiUrl}/${id}/suspend`, {});
+    }
+
+    activateClient(id: string): Observable<any> {
+        return this.http.put(`${this.apiUrl}/${id}/activate`, {});
+    }
 }

@@ -189,6 +189,62 @@
                                     ]
                                 }
                             }
+                        },
+                        {
+                            "name": "Suspendre un client",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{admin_token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "PUT",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{base_url}}/clients/2/suspend",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "clients",
+                                        "2",
+                                        "suspend"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Activer un client",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{admin_token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "PUT",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{base_url}}/clients/2/activate",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "clients",
+                                        "2",
+                                        "activate"
+                                    ]
+                                }
+                            }
                         }
                     ]
                 },

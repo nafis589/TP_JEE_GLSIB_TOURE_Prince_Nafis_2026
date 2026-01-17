@@ -99,12 +99,13 @@ export class TransactionOperationComponent implements OnInit {
 
       obs.subscribe({
         next: () => {
+          this.isLoading = false;
           alert(`Opération de ${this.isDepot ? 'Dépôt' : 'Retrait'} effectuée avec succès !`);
           this.router.navigate(['/admin/transactions']);
         },
         error: (err) => {
-          alert("Erreur: " + (err.error?.message || err.message));
           this.isLoading = false;
+          alert("Erreur: " + (err.error?.message || err.message));
         }
       });
     }

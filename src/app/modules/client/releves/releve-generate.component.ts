@@ -20,9 +20,9 @@ import { FormsModule } from '@angular/forms';
         <div class="row g-3">
           <div class="col-md-4">
             <label class="form-label small fw-bold">Compte</label>
-            <select class="form-select" [(ngModel)]="selectedCompteId">
+            <select class="form-select" [(ngModel)]="selectedCompteNumero">
               <option value="">Sélectionner un compte</option>
-              <option *ngFor="let acc of accounts$ | async" [value]="acc.id">
+              <option *ngFor="let acc of accounts$ | async" [value]="acc.numeroCompte">
                 {{ acc.numeroCompte }} ({{ acc.solde | currency:'EUR' }})
               </option>
             </select>
@@ -36,7 +36,7 @@ import { FormsModule } from '@angular/forms';
             <input type="date" class="form-control" [(ngModel)]="dateFin">
           </div>
           <div class="col-md-2 d-flex align-items-end">
-            <button class="btn btn-primary w-100" (click)="generate()" [disabled]="!selectedCompteId || !dateDebut || !dateFin || isLoading">
+            <button class="btn btn-primary w-100" (click)="generate()" [disabled]="!selectedCompteNumero || !dateDebut || !dateFin || isLoading">
               <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-2"></span>
               Générer
             </button>
@@ -122,12 +122,12 @@ export class ClientRelevésComponent implements OnInit {
   accounts$: Observable<Compte[]>;
   profile$: Observable<Client>;
 
-  selectedCompteId = '';
+  selectedCompteNumero = '';
   dateDebut = '';
   dateFin = '';
 
   releve: Releve | null = null;
-  selectedCompteNumero = '';
+
   isLoading = false;
   today = new Date();
 
@@ -139,26 +139,24 @@ export class ClientRelevésComponent implements OnInit {
   ngOnInit(): void { }
 
   generate() {
+    if (!this.selectedCompteNumero || !this.dateDebut || !this.dateFin) {
+      return;
+    }
+
     this.isLoading = true;
-    this.clientBankService.getAccountById(this.selectedCompteId).subscribe(acc => {
-      if (acc) {
-        this.selectedCompteNumero = acc.numeroCompte;
-        this.clientBankService.generateReleve(
-          acc.numeroCompte,
-          new Date(this.dateDebut),
-          new Date(this.dateFin)
-        ).subscribe({
-          next: (res) => {
-            this.releve = res;
-            this.isLoading = false;
-          },
-          error: () => {
-            this.isLoading = false;
-            alert("Erreur lors de la génération du relevé");
-          }
-        });
-      } else {
+    this.clientBankService.generateReleve(
+      this.selectedCompteNumero,
+      this.dateDebut,
+      this.dateFin
+    ).subscribe({
+      next: (res) => {
+        this.releve = res;
         this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('Erreur génération relevé:', err);
+        this.isLoading = false;
+        alert("Erreur lors de la génération du relevé");
       }
     });
   }

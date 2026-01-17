@@ -2,19 +2,19 @@ export interface Client {
     id: string;
     nom: string;
     prenom: string;
-    firstName?: string; // Pour compatibilité backend
-    lastName?: string;  // Pour compatibilité backend
+    firstName?: string;
+    lastName?: string;
     dateNaissance: Date;
-    birthDate?: string; // Pour compatibilité backend
+    birthDate?: string;
     sexe: 'M' | 'F';
-    gender?: 'M' | 'F'; // Pour compatibilité backend
+    gender?: 'M' | 'F';
     adresse: string;
-    address?: string; // Pour compatibilité backend
+    address?: string;
     telephone: string;
-    phoneNumber?: string; // Pour compatibilité backend
+    phoneNumber?: string;
     email: string;
     nationalite: string;
-    nationality?: string; // Pour compatibilité backend
+    nationality?: string;
     dateInscription: Date;
     statut: 'Actif' | 'Suspendu';
 }
@@ -33,15 +33,15 @@ export interface Compte {
 
 export interface Transaction {
     id: string;
-    type: 'DEPOT' | 'RETRAIT' | 'VIREMENT' | 'TRANSFER';
+    type: 'DEPOT' | 'RETRAIT' | 'VIREMENT' | 'TRANSFER' | 'DEPOSIT' | 'WITHDRAWAL';
     montant: number;
-    amount?: number; // Backend compatibility
+    amount?: number;
     date: Date;
     description: string;
     compteSource?: string;
-    accountNumber?: string; // Backend compatibility (source)
+    accountNumber?: string;
     compteDestination?: string;
-    targetAccountNumber?: string; // Backend compatibility
+    targetAccountNumber?: string;
     statut: 'SUCCESS' | 'PENDING' | 'FAILED' | 'COMPLETED';
 }
 
@@ -56,32 +56,61 @@ export interface Releve {
     transactions: Transaction[];
 }
 
-// Map helpers for services
+// ========== MAPPING FUNCTIONS ==========
+
 export function mapClientFromBackend(b: any): Client {
+    if (!b) return b;
     return {
-        id: b.id,
-        nom: b.lastName || b.nom,
-        prenom: b.firstName || b.prenom,
-        dateNaissance: new Date(b.birthDate || b.dateNaissance),
-        sexe: b.gender || b.sexe,
-        adresse: b.address || b.adresse,
-        telephone: b.phoneNumber || b.telephone,
-        email: b.email,
-        nationalite: b.nationality || b.nationalite,
-        dateInscription: new Date(b.dateInscription || Date.now()),
-        statut: b.statut || 'Actif'
+        id: String(b.id || ''),
+        nom: b.lastName || b.nom || '',
+        prenom: b.firstName || b.prenom || '',
+        dateNaissance: b.birthDate ? new Date(b.birthDate) : (b.dateNaissance ? new Date(b.dateNaissance) : new Date()),
+        sexe: b.gender || b.sexe || 'M',
+        adresse: b.address || b.adresse || '',
+        telephone: b.phoneNumber || b.telephone || '',
+        email: b.email || '',
+        nationalite: b.nationality || b.nationalite || '',
+        dateInscription: b.createdAt ? new Date(b.createdAt) : (b.dateInscription ? new Date(b.dateInscription) : new Date()),
+        statut: b.status === 'ACTIVE' ? 'Actif' : (b.statut || 'Actif')
+    };
+}
+
+export function mapCompteFromBackend(b: any): Compte {
+    if (!b) return b;
+
+    // Le backend peut renvoyer accountNumber, accountType, balance
+    const type = (b.accountType || b.type || 'COURANT').toUpperCase();
+
+    return {
+        id: String(b.id || ''),
+        numeroCompte: b.accountNumber || b.iban || b.numeroCompte || '',
+        solde: Number(b.balance ?? b.solde ?? 0),
+        type: type === 'EPARGNE' || type === 'SAVINGS' ? 'EPARGNE' : 'COURANT',
+        dateCreation: b.createdAt ? new Date(b.createdAt) : (b.dateCreation ? new Date(b.dateCreation) : new Date()),
+        clientId: String(b.clientId || b.client?.id || ''),
+        clientNom: b.clientName || b.clientNom || (b.client ? `${b.client.firstName} ${b.client.lastName}` : ''),
+        devise: b.currency || b.devise || 'EUR',
+        statut: (b.status || b.statut || 'ACTIF').toUpperCase() === 'ACTIVE' ? 'ACTIF' : (b.statut || 'ACTIF')
     };
 }
 
 export function mapTransactionFromBackend(b: any): Transaction {
+    if (!b) return b;
+
+    // Normaliser le type de transaction
+    let transactionType = (b.type || 'DEPOT').toUpperCase();
+    if (transactionType === 'DEPOSIT') transactionType = 'DEPOT';
+    if (transactionType === 'WITHDRAWAL') transactionType = 'RETRAIT';
+    if (transactionType === 'TRANSFER') transactionType = 'VIREMENT';
+
     return {
-        id: b.id,
-        type: b.type,
-        montant: b.amount || b.montant,
-        date: new Date(b.date || b.timestamp),
-        description: b.description,
-        compteSource: b.accountNumber || b.compteSource,
-        compteDestination: b.targetAccountNumber || b.compteDestination,
-        statut: b.status || b.statut || 'SUCCESS'
+        id: String(b.id || ''),
+        type: transactionType as any,
+        montant: Number(b.amount ?? b.montant ?? 0),
+        date: b.timestamp ? new Date(b.timestamp) : (b.date ? new Date(b.date) : new Date()),
+        description: b.description || '',
+        compteSource: b.accountNumber || b.sourceAccount || b.compteSource || '',
+        compteDestination: b.targetAccountNumber || b.destinationAccount || b.compteDestination || '',
+        statut: (b.status || b.statut || 'SUCCESS').toUpperCase() as any
     };
 }

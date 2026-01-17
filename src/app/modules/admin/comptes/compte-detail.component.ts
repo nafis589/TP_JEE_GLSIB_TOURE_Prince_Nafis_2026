@@ -1,10 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CompteService } from '../../../shared/services/compte.service';
 import { TransactionService } from '../../../shared/services/transaction.service';
 import { Compte, Transaction } from '../../../shared/models/bank.models';
-import { Observable, forkJoin, of } from 'rxjs';
+import { Observable, forkJoin, of, catchError, map, switchMap, finalize } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 
 @Component({
@@ -17,7 +17,22 @@ import { FormsModule } from '@angular/forms';
       <button class="btn btn-light" [routerLink]="['/admin/comptes']">Retour</button>
     </div>
 
-    <div class="row" *ngIf="data$ | async as data">
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Chargement...</span>
+      </div>
+      <p class="mt-3 text-muted">Chargement des données du compte...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="errorMessage && !isLoading" class="alert alert-danger">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>
+      {{ errorMessage }}
+      <button class="btn btn-sm btn-outline-danger ms-3" (click)="loadData()">Réessayer</button>
+    </div>
+
+    <div class="row" *ngIf="compte && !isLoading && !errorMessage">
       <!-- Info Compte -->
       <div class="col-lg-5">
         <div class="card border-0 shadow-sm mb-4">
@@ -25,24 +40,24 @@ import { FormsModule } from '@angular/forms';
             <h5 class="fw-bold mb-3 text-dark">Informations du Compte</h5>
             <div class="d-flex justify-content-between mb-2">
               <span class="text-muted">Numéro</span>
-              <span class="fw-bold">{{ data.compte.numeroCompte }}</span>
+              <span class="fw-bold">{{ compte.numeroCompte }}</span>
             </div>
             <div class="d-flex justify-content-between mb-2">
               <span class="text-muted">Titulaire</span>
-              <span class="fw-bold text-primary">{{ data.compte.clientNom }}</span>
+              <span class="fw-bold text-primary">{{ compte.clientNom || 'Non renseigné' }}</span>
             </div>
             <div class="d-flex justify-content-between mb-2">
               <span class="text-muted">Type</span>
-              <span class="badge bg-secondary">{{ data.compte.type }}</span>
+              <span class="badge bg-secondary">{{ compte.type }}</span>
             </div>
             <div class="d-flex justify-content-between mb-2">
               <span class="text-muted">Créé le</span>
-              <span>{{ data.compte.dateCreation | date:'dd/MM/yyyy' }}</span>
+              <span>{{ compte.dateCreation | date:'dd/MM/yyyy' }}</span>
             </div>
             <hr>
             <div class="text-center py-3">
               <div class="text-muted small">Solde Actuel</div>
-              <h2 class="fw-bold text-success display-6">{{ data.compte.solde | currency:'EUR' }}</h2>
+              <h2 class="fw-bold text-success display-6">{{ compte.solde | currency:'EUR' }}</h2>
             </div>
           </div>
         </div>
@@ -85,7 +100,10 @@ import { FormsModule } from '@angular/forms';
               <input type="text" class="form-control" [(ngModel)]="opDescription" placeholder="Motif de l'opération...">
             </div>
             <div class="d-grid">
-              <button class="btn btn-dark btn-lg" (click)="confirmOperation(data.compte)">Confirmer</button>
+              <button class="btn btn-dark btn-lg" (click)="confirmOperation()" [disabled]="isProcessing">
+                <span *ngIf="isProcessing" class="spinner-border spinner-border-sm me-2"></span>
+                Confirmer
+              </button>
             </div>
           </div>
         </div>
@@ -98,14 +116,14 @@ import { FormsModule } from '@angular/forms';
           <div class="table-responsive">
             <table class="table align-middle">
               <tbody>
-                <tr *ngFor="let t of data.transactions">
+                <tr *ngFor="let t of transactions">
                   <td>
                     <div class="d-flex align-items-center">
                       <div class="rounded-circle p-2 me-3" [ngClass]="t.type === 'DEPOT' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'">
                         <i class="bi" [ngClass]="t.type === 'DEPOT' ? 'bi-arrow-down-left' : 'bi-arrow-up-right'"></i>
                       </div>
                       <div>
-                        <div class="fw-bold">{{ t.description }}</div>
+                        <div class="fw-bold">{{ t.description || 'Transaction' }}</div>
                         <small class="text-muted">{{ t.date | date:'dd MMM yyyy HH:mm' }}</small>
                       </div>
                     </div>
@@ -114,7 +132,7 @@ import { FormsModule } from '@angular/forms';
                     {{ t.type === 'DEPOT' ? '+' : '-' }}{{ t.montant | currency:'EUR' }}
                   </td>
                 </tr>
-                <tr *ngIf="data.transactions.length === 0">
+                <tr *ngIf="transactions.length === 0">
                   <td class="text-center text-muted py-4">Aucune transaction</td>
                 </tr>
               </tbody>
@@ -131,7 +149,12 @@ import { FormsModule } from '@angular/forms';
 })
 export class CompteDetailComponent implements OnInit {
   compteId: string | null = null;
-  data$: Observable<{ compte: Compte, transactions: Transaction[] }> | undefined;
+  compte: Compte | null = null;
+  transactions: Transaction[] = [];
+
+  isLoading = false;
+  isProcessing = false;
+  errorMessage: string | null = null;
 
   currentOperation: 'DEPOT' | 'RETRAIT' | null = null;
   opMontant: number = 0;
@@ -140,27 +163,57 @@ export class CompteDetailComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private compteService: CompteService,
-    private transactionService: TransactionService
+    private transactionService: TransactionService,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit(): void {
     this.compteId = this.route.snapshot.paramMap.get('id');
     if (this.compteId) {
       this.loadData();
+    } else {
+      this.errorMessage = "ID de compte non spécifié";
     }
   }
 
   loadData() {
-    if (this.compteId) {
-      this.compteService.getCompteById(this.compteId).subscribe(compte => {
-        if (compte) {
-          this.data$ = forkJoin({
-            compte: of(compte),
-            transactions: this.transactionService.getTransactions({ compteId: compte.numeroCompte })
-          }) as Observable<{ compte: Compte, transactions: Transaction[] }>;
+    if (!this.compteId) return;
+
+    this.isLoading = true;
+    this.errorMessage = null;
+    console.log('[CompteDetail] Loading data for compte:', this.compteId);
+
+    this.compteService.getCompteById(this.compteId).pipe(
+      switchMap(compte => {
+        if (!compte) {
+          throw new Error('Compte non trouvé');
         }
-      });
-    }
+        this.compte = compte;
+        return this.transactionService.getTransactions({ compteId: compte.numeroCompte }).pipe(
+          catchError(err => {
+            console.warn('[CompteDetail] Error loading transactions:', err);
+            return of([]);
+          })
+        );
+      }),
+      catchError(err => {
+        console.error('[CompteDetail] Error loading data:', err);
+        this.errorMessage = err.error?.message || err.message || 'Erreur lors du chargement du compte';
+        return of([]);
+      }),
+      finalize(() => {
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
+      next: (transactions) => {
+        this.transactions = transactions || [];
+      },
+      error: (err) => {
+        console.error('[CompteDetail] Subscribe error:', err);
+        this.errorMessage = err.error?.message || err.message || 'Erreur inconnue';
+      }
+    });
   }
 
   setOperation(type: 'DEPOT' | 'RETRAIT') {
@@ -169,22 +222,30 @@ export class CompteDetailComponent implements OnInit {
     this.opDescription = type === 'DEPOT' ? 'Dépôt espèce' : 'Retrait espèce';
   }
 
-  confirmOperation(compte: Compte) {
-    if (this.opMontant <= 0) return alert("Veuillez saisir un montant valide");
+  confirmOperation() {
+    if (!this.compte) return;
+    if (this.opMontant <= 0) {
+      alert("Veuillez saisir un montant valide");
+      return;
+    }
 
+    this.isProcessing = true;
     const obs = this.currentOperation === 'DEPOT' ?
-      this.transactionService.deposit(compte.numeroCompte, this.opMontant, this.opDescription) :
-      this.transactionService.withdraw(compte.numeroCompte, this.opMontant, this.opDescription);
+      this.transactionService.deposit(this.compte.numeroCompte, this.opMontant, this.opDescription) :
+      this.transactionService.withdraw(this.compte.numeroCompte, this.opMontant, this.opDescription);
 
     obs.subscribe({
       next: () => {
+        this.isProcessing = false;
         alert("Opération réussie !");
         this.currentOperation = null;
         this.loadData();
       },
       error: (err) => {
+        this.isProcessing = false;
         alert("Erreur: " + (err.error?.message || err.message));
       }
     });
   }
 }
+

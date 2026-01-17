@@ -16,41 +16,56 @@ export class ClientBankService {
         private releveService: ReleveService
     ) { }
 
+    // Profil du client connecté
     getProfile(): Observable<Client> {
         return this.clientService.getClientMe();
     }
 
+    // Mes comptes bancaires
     getAccounts(): Observable<Compte[]> {
         return this.compteService.getMyAccounts();
     }
 
+    // Détail d'un compte par ID
     getAccountById(id: string): Observable<Compte> {
         return this.compteService.getCompteById(id);
     }
 
-    getTransactions(filters?: { type?: string; dateDebut?: string; dateFin?: string; compteId?: string }): Observable<Transaction[]> {
-        // Pour un client, on récupère souvent l'historique global ou par compte
-        // Si aucun compte n'est spécifié, on pourrait avoir besoin d'un endpoint global client
-        // Pour l'instant, on mappe sur TransactionService
+    // Trouver un compte par son numéro IBAN
+    getAccountByNumero(numeroCompte: string): Observable<Compte | undefined> {
+        return this.compteService.getCompteByNumero(numeroCompte);
+    }
+
+    // Historique des transactions (par compte)
+    getTransactions(filters?: {
+        type?: string;
+        dateDebut?: string;
+        dateFin?: string;
+        compteId?: string
+    }): Observable<Transaction[]> {
         return this.transactionService.getTransactions(filters);
     }
 
-    performTransfer(transferData: any): Observable<Transaction> {
+    // Effectuer un virement
+    // Le formulaire envoie: compteSource, compteDestination, montant, description
+    // Le backend attend: accountNumber, targetAccountNumber, amount, description
+    performTransfer(transferData: {
+        compteSource: string;
+        compteDestination: string;
+        montant: number;
+        description: string;
+    }): Observable<Transaction> {
         return this.transactionService.transfer(
-            transferData.compteSource,
-            transferData.compteDestination,
-            transferData.montant,
-            transferData.description
+            transferData.compteSource,          // accountNumber
+            transferData.compteDestination,     // targetAccountNumber
+            transferData.montant,               // amount
+            transferData.description            // description
         );
     }
 
-    generateReleve(compteId: string, start: Date, end: Date): Observable<Releve> {
-        // En supposant que compteId est ici l'IBAN ou qu'on peut l'obtenir
-        // Le backend attend l'IBAN
-        return this.releveService.generateReleve(
-            compteId,
-            start.toISOString(),
-            end.toISOString()
-        );
+    // Générer un relevé de compte
+    generateReleve(numeroCompte: string, start: Date | string, end: Date | string): Observable<Releve> {
+        return this.releveService.generateReleve(numeroCompte, start, end);
     }
 }
+
