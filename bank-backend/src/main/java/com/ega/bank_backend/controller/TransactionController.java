@@ -42,6 +42,12 @@ public class TransactionController {
         return "Virement effectué avec succès";
     }
 
+    @GetMapping("/history")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<Transaction> getAllHistory() {
+        return transactionService.getAllTransactions();
+    }
+
     @GetMapping("/history/{accountNumber}")
     @PreAuthorize("hasRole('ADMIN') or @clientSecurity.isAccountOwner(authentication, #accountNumber)")
     public List<Transaction> getHistory(

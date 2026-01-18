@@ -397,6 +397,33 @@
 									]
 								}
 							}
+						},
+						{
+							"name": "Liste Global des transactions",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/transactions/history",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"transactions",
+										"history"
+									]
+								}
+							}
 						}
 					]
 				}

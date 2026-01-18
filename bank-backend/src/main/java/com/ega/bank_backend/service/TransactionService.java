@@ -147,4 +147,8 @@ public class TransactionService {
         return accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Compte introuvable: " + accountNumber));
     }
+
+    public List<Transaction> getAllTransactions() {
+        return transactionRepository.findAll();
+    }
 }
