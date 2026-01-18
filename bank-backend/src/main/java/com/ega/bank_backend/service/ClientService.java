@@ -106,6 +106,7 @@ public class ClientService {
                 client.getFirstName(),
                 client.getLastName(),
                 client.getEmail(),
+                client.getStatus(),
                 accounts);
     }
 }
