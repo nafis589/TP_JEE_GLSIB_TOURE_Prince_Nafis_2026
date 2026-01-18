@@ -71,14 +71,14 @@ export function mapClientFromBackend(b: any): Client {
         email: b.email || '',
         nationalite: b.nationality || b.nationalite || '',
         dateInscription: b.createdAt ? new Date(b.createdAt) : (b.dateInscription ? new Date(b.dateInscription) : new Date()),
-        statut: b.status === 'ACTIVE' ? 'Actif' : (b.statut || 'Actif')
+        statut: b.status === 'SUSPENDED' ? 'Suspendu' : (b.status === 'ACTIVE' ? 'Actif' : (b.statut || 'Actif'))
     };
 }
 
 export function mapCompteFromBackend(b: any): Compte {
     if (!b) return b;
 
-    // Le backend peut renvoyer accountNumber, accountType, balance
+    // Le backend peut renvoyer accountNumber, accountType, balance, ownerName
     const type = (b.accountType || b.type || 'COURANT').toUpperCase();
 
     return {
@@ -88,8 +88,9 @@ export function mapCompteFromBackend(b: any): Compte {
         type: type === 'EPARGNE' || type === 'SAVINGS' ? 'EPARGNE' : 'COURANT',
         dateCreation: b.createdAt ? new Date(b.createdAt) : (b.dateCreation ? new Date(b.dateCreation) : new Date()),
         clientId: String(b.clientId || b.client?.id || ''),
-        clientNom: b.clientName || b.clientNom || (b.client ? `${b.client.firstName} ${b.client.lastName}` : ''),
-        devise: b.currency || b.devise || 'EUR',
+        // ownerName est fourni directement par l'API selon la documentation
+        clientNom: b.ownerName || b.clientName || b.clientNom || (b.client ? `${b.client.firstName || ''} ${b.client.lastName || ''}`.trim() : '') || 'Non renseigné',
+        devise: b.currency || b.devise || 'XOF',
         statut: (b.status || b.statut || 'ACTIF').toUpperCase() === 'ACTIVE' ? 'ACTIF' : (b.statut || 'ACTIF')
     };
 }

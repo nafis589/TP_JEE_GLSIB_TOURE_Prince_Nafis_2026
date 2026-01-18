@@ -57,7 +57,7 @@ import { FormsModule } from '@angular/forms';
             <hr>
             <div class="text-center py-3">
               <div class="text-muted small">Solde Actuel</div>
-              <h2 class="fw-bold text-success display-6">{{ compte.solde | currency:'EUR' }}</h2>
+              <h2 class="fw-bold text-success display-6">{{ compte.solde | number:'1.0-0' }} FCFA</h2>
             </div>
           </div>
         </div>
@@ -92,8 +92,8 @@ import { FormsModule } from '@angular/forms';
               <button class="btn-close" (click)="currentOperation = null"></button>
             </div>
             <div class="mb-3 text-dark">
-              <label class="form-label">Montant (EUR)</label>
-              <input type="number" class="form-control form-control-lg" [(ngModel)]="opMontant" placeholder="0.00">
+              <label class="form-label">Montant (FCFA)</label>
+              <input type="number" class="form-control form-control-lg" [(ngModel)]="opMontant" placeholder="0">
             </div>
             <div class="mb-3 text-dark">
               <label class="form-label">Description</label>
@@ -129,7 +129,7 @@ import { FormsModule } from '@angular/forms';
                     </div>
                   </td>
                   <td class="text-end fw-bold" [class.text-success]="t.type === 'DEPOT'" [class.text-danger]="t.type !== 'DEPOT'">
-                    {{ t.type === 'DEPOT' ? '+' : '-' }}{{ t.montant | currency:'EUR' }}
+                    {{ t.type === 'DEPOT' ? '+' : '-' }}{{ t.montant | number:'1.0-0' }} FCFA
                   </td>
                 </tr>
                 <tr *ngIf="transactions.length === 0">
@@ -234,15 +234,19 @@ export class CompteDetailComponent implements OnInit {
       this.transactionService.deposit(this.compte.numeroCompte, this.opMontant, this.opDescription) :
       this.transactionService.withdraw(this.compte.numeroCompte, this.opMontant, this.opDescription);
 
-    obs.subscribe({
-      next: () => {
+    obs.pipe(
+      finalize(() => {
         this.isProcessing = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
+      next: () => {
         alert("Opération réussie !");
         this.currentOperation = null;
-        this.loadData();
+        // Recharger la page pour afficher le nouveau solde
+        window.location.reload();
       },
       error: (err) => {
-        this.isProcessing = false;
         alert("Erreur: " + (err.error?.message || err.message));
       }
     });

@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ClientService } from '../../../shared/services/client.service';
 import { CompteService } from '../../../shared/services/compte.service';
 import { Client, Compte } from '../../../shared/models/bank.models';
-import { forkJoin, catchError, of, finalize } from 'rxjs';
+import { forkJoin, catchError, of, finalize, map } from 'rxjs';
 
 @Component({
   selector: 'app-client-detail',
@@ -54,7 +54,11 @@ import { forkJoin, catchError, of, finalize } from 'rxjs';
               <p><i class="bi bi-flag me-2"></i> {{ client.nationalite || 'Non renseigné' }}</p>
             </div>
             <div class="d-grid gap-2">
-              <button class="btn" [ngClass]="client.statut === 'Actif' ? 'btn-outline-danger' : 'btn-outline-success'" (click)="toggleStatut()">
+              <button class="btn" 
+                      [ngClass]="client.statut === 'Actif' ? 'btn-outline-danger' : 'btn-outline-success'" 
+                      (click)="toggleStatut()"
+                      [disabled]="isTogglingStatus">
+                <span *ngIf="isTogglingStatus" class="spinner-border spinner-border-sm me-2"></span>
                 {{ client.statut === 'Actif' ? 'Suspendre' : 'Réactiver' }}
               </button>
             </div>
@@ -84,7 +88,7 @@ import { forkJoin, catchError, of, finalize } from 'rxjs';
                   <td>
                     <span class="badge bg-info-subtle text-info">{{ compte.type }}</span>
                   </td>
-                  <td class="fw-bold">{{ compte.solde | currency:'EUR' }}</td>
+                  <td class="fw-bold">{{ compte.solde | number:'1.0-0' }} FCFA</td>
                   <td>
                     <button class="btn btn-sm btn-light" [routerLink]="['/admin/comptes', compte.id]">
                       Voir
@@ -172,6 +176,7 @@ export class ClientDetailComponent implements OnInit {
   comptes: Compte[] = [];
 
   isLoading = false;
+  isTogglingStatus = false;  // Loading state pour le bouton suspend/activate
   errorMessage: string | null = null;
 
   showModal = false;
@@ -228,15 +233,47 @@ export class ClientDetailComponent implements OnInit {
   }
 
   toggleStatut() {
-    if (!this.client) return;
+    if (!this.client || !this.clientId) return;
 
-    const action$ = this.client.statut === 'Actif'
-      ? this.clientService.suspendClient(this.client.id)
-      : this.clientService.activateClient(this.client.id);
+    const currentStatut = this.client.statut;
+    const isCurrentlyActive = currentStatut === 'Actif';
 
-    action$.subscribe({
-      next: () => this.loadData(),
-      error: (err) => alert("Erreur: " + (err.error?.message || err.message))
+    console.log('[ClientDetail] Toggle statut for client:', this.clientId);
+    console.log('[ClientDetail] Current statut:', currentStatut);
+    console.log('[ClientDetail] Will call:', isCurrentlyActive ? 'suspend' : 'activate');
+
+    this.isTogglingStatus = true;
+    this.cdr.detectChanges();
+
+    const action$ = isCurrentlyActive
+      ? this.clientService.suspendClient(this.clientId)
+      : this.clientService.activateClient(this.clientId);
+
+    action$.pipe(
+      finalize(() => {
+        this.isTogglingStatus = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
+      next: (response) => {
+        console.log('[ClientDetail] Toggle statut response:', response);
+
+        // Mettre à jour le statut localement sans recharger la page
+        if (this.client) {
+          this.client.statut = isCurrentlyActive ? 'Suspendu' : 'Actif';
+        }
+
+        // Afficher le message de succès
+        const message = response?.message || (isCurrentlyActive ? 'Client suspendu avec succès' : 'Client réactivé avec succès');
+        alert(message);
+
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('[ClientDetail] Toggle statut error:', err);
+        const errorMsg = err.error?.message || err.message || 'Erreur lors du changement de statut';
+        alert('Erreur: ' + errorMsg);
+      }
     });
   }
 

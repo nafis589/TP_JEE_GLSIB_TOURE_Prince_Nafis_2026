@@ -84,7 +84,7 @@ import { RouterLink } from '@angular/router';
                 </div>
               </td>
               <td class="text-end fw-bold" [ngClass]="t.type === 'DEPOT' ? 'text-success' : 'text-danger'">
-                {{ t.type === 'DEPOT' ? '+' : '-' }}{{ t.montant | currency:'EUR' }}
+                {{ t.type === 'DEPOT' ? '+' : '-' }}{{ t.montant | number:'1.0-0' }} FCFA
               </td>
               <td>
                 <span class="badge bg-success">Réussie</span>

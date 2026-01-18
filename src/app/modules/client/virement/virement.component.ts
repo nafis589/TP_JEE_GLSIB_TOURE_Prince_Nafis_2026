@@ -27,7 +27,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
                 <select class="form-select form-select-lg" formControlName="compteSource">
                   <option value="">Sélectionner le compte à débiter</option>
                   <option *ngFor="let acc of accounts$ | async" [value]="acc.numeroCompte">
-                    {{ acc.numeroCompte }} ({{ acc.solde | currency:'EUR' }})
+                    {{ acc.numeroCompte }} ({{ acc.solde | number:'1.0-0' }} FCFA)
                   </option>
                 </select>
                 <div class="invalid-feedback d-block" *ngIf="isInvalid('compteSource')">
@@ -38,32 +38,43 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
               <!-- Compte Destination -->
               <div class="mb-4">
                 <label class="form-label fw-bold">Vers le compte</label>
-                <div class="input-group input-group-lg">
-                  <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
+                <div class="mb-2">
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="destType" id="destInterne" [checked]="!isExternalTransfer" (change)="isExternalTransfer = false">
+                    <label class="form-check-label" for="destInterne">Mes comptes</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="destType" id="destExterne" [checked]="isExternalTransfer" (change)="isExternalTransfer = true">
+                    <label class="form-check-label" for="destExterne">Autre compte (IBAN)</label>
+                  </div>
+                </div>
+                <div class="input-group input-group-lg" *ngIf="!isExternalTransfer">
+                  <span class="input-group-text bg-white"><i class="bi bi-wallet2"></i></span>
                   <select class="form-select" formControlName="compteDestination">
-                    <option value="">Choisir un bénéficiaire</option>
-                    <optgroup label="Mes Comptes">
-                      <option *ngFor="let acc of accounts$ | async" [value]="acc.numeroCompte" [disabled]="acc.numeroCompte === virementForm.get('compteSource')?.value">
-                        {{ acc.numeroCompte }} (Mien)
-                      </option>
-                    </optgroup>
-                    <optgroup label="Bénéficiaires Externes">
-                      <option value="EXT1">FR76 0000 1111 2222 (Jean Dupont)</option>
-                      <option value="EXT2">FR76 3333 4444 5555 (Marie Curie)</option>
-                    </optgroup>
+                    <option value="">Choisir un de mes comptes</option>
+                    <option *ngFor="let acc of accounts$ | async" [value]="acc.numeroCompte" [disabled]="acc.numeroCompte === virementForm.get('compteSource')?.value">
+                      {{ acc.numeroCompte }} ({{ acc.type }} - {{ acc.solde | number:'1.0-0' }} FCFA)
+                    </option>
                   </select>
                 </div>
+                <div class="input-group input-group-lg" *ngIf="isExternalTransfer">
+                  <span class="input-group-text bg-white"><i class="bi bi-bank"></i></span>
+                  <input type="text" class="form-control" formControlName="compteDestination" 
+                         placeholder="Ex: FR7630001007941234567890185"
+                         pattern="[A-Z]{2}[0-9]{2}[A-Z0-9]{4,30}">
+                </div>
                 <div class="invalid-feedback d-block" *ngIf="isInvalid('compteDestination')">
-                  Veuillez choisir un bénéficiaire.
+                  Veuillez saisir un IBAN valide.
                 </div>
               </div>
 
+
               <div class="row g-3 mb-4">
                 <div class="col-md-6">
-                  <label class="form-label fw-bold">Montant (EUR)</label>
+                  <label class="form-label fw-bold">Montant (FCFA)</label>
                   <div class="input-group input-group-lg">
-                    <span class="input-group-text">€</span>
-                    <input type="number" class="form-control" formControlName="montant" placeholder="0.00">
+                    <span class="input-group-text">FCFA</span>
+                    <input type="number" class="form-control" formControlName="montant" placeholder="0">
                   </div>
                   <div class="invalid-feedback d-block" *ngIf="isInvalid('montant')">
                     Le montant doit être supérieur à 0.
@@ -102,6 +113,7 @@ export class ClientVirementComponent implements OnInit {
   virementForm: FormGroup;
   accounts$: Observable<Compte[]>;
   isLoading = false;
+  isExternalTransfer = false;  // Toggle entre virement interne et externe
 
   constructor(
     private fb: FormBuilder,

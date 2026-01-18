@@ -24,7 +24,7 @@ import { RouterLink } from '@angular/router';
           <div class="card border-0 shadow-sm bg-primary text-white p-4 h-100 position-relative overflow-hidden">
             <div class="position-relative z-1">
               <div class="small opacity-75 mb-1">Solde Total</div>
-              <h1 class="fw-bold display-6 mb-0">{{ totalBalance | currency:'EUR' }}</h1>
+              <h1 class="fw-bold display-6 mb-0">{{ totalBalance | number:'1.0-0' }} FCFA</h1>
             </div>
             <i class="bi bi-wallet2 position-absolute end-0 bottom-0 opacity-25 m-n3" style="font-size: 8rem;"></i>
           </div>
@@ -78,7 +78,7 @@ import { RouterLink } from '@angular/router';
                       <i class="bi bi-three-dots-vertical text-muted"></i>
                     </div>
                     <div class="fw-bold mb-1">{{ acc.numeroCompte }}</div>
-                    <h4 class="fw-bold mb-0">{{ acc.solde | currency:'EUR' }}</h4>
+                    <h4 class="fw-bold mb-0">{{ acc.solde | number:'1.0-0' }} FCFA</h4>
                   </div>
                 </div>
               </div>
@@ -107,7 +107,7 @@ import { RouterLink } from '@angular/router';
                         <small class="text-muted">{{ t.date | date:'dd MMM yyyy' }}</small>
                       </td>
                       <td class="text-end fw-bold" [ngClass]="t.type === 'DEPOT' ? 'text-success' : 'text-danger'">
-                        {{ t.type === 'DEPOT' ? '+' : '-' }}{{ t.montant | currency:'EUR' }}
+                        {{ t.type === 'DEPOT' ? '+' : '-' }}{{ t.montant | number:'1.0-0' }} FCFA
                       </td>
                     </tr>
                   </tbody>

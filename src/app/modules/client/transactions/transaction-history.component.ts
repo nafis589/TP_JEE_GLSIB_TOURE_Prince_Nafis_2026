@@ -78,7 +78,7 @@ import { FormsModule } from '@angular/forms';
                   }">{{ t.type }}</span>
                 </td>
                 <td class="text-end fw-bold pe-4 fs-5" [ngClass]="isCredit(t) ? 'text-success' : 'text-danger'">
-                  {{ isCredit(t) ? '+' : '-' }}{{ t.montant | currency:'EUR' }}
+                  {{ isCredit(t) ? '+' : '-' }}{{ t.montant | number:'1.0-0' }} FCFA
                 </td>
               </tr>
               <tr *ngIf="!(transactions$ | async)?.length">

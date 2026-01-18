@@ -23,7 +23,7 @@ import { FormsModule } from '@angular/forms';
             <select class="form-select" [(ngModel)]="selectedCompteNumero">
               <option value="">Sélectionner un compte</option>
               <option *ngFor="let acc of accounts$ | async" [value]="acc.numeroCompte">
-                {{ acc.numeroCompte }} ({{ acc.solde | currency:'EUR' }})
+                {{ acc.numeroCompte }} ({{ acc.solde | number:'1.0-0' }} FCFA)
               </option>
             </select>
           </div>
@@ -72,7 +72,7 @@ import { FormsModule } from '@angular/forms';
           </div>
           <div class="text-end">
             <span class="small text-muted d-block">Solde au {{ dateFin | date:'dd/MM/yyyy' }}</span>
-            <span class="fw-bold fs-2 text-primary">{{ releve.soldeFinal | currency:'EUR' }}</span>
+            <span class="fw-bold fs-2 text-primary">{{ releve.soldeFinal | number:'1.0-0' }} FCFA</span>
           </div>
         </div>
 
@@ -91,8 +91,8 @@ import { FormsModule } from '@angular/forms';
               <tr *ngFor="let t of releve.transactions">
                 <td>{{ t.date | date:'dd/MM/yyyy' }}</td>
                 <td>{{ t.description }}</td>
-                <td class="text-end text-danger">{{ t.type !== 'DEPOT' ? (t.montant | currency:'EUR') : '' }}</td>
-                <td class="text-end text-success">{{ t.type === 'DEPOT' ? (t.montant | currency:'EUR') : '' }}</td>
+                <td class="text-end text-danger">{{ t.type !== 'DEPOT' ? (t.montant | number:'1.0-0') + ' FCFA' : '' }}</td>
+                <td class="text-end text-success">{{ t.type === 'DEPOT' ? (t.montant | number:'1.0-0') + ' FCFA' : '' }}</td>
               </tr>
               <tr *ngIf="releve.transactions.length === 0">
                 <td colspan="4" class="text-center py-4 text-muted fst-italic">Aucune opération</td>

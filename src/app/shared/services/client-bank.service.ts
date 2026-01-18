@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { Client, Compte, Transaction, Releve } from '../models/bank.models';
+import { Client, Compte, Releve, Transaction } from '../models/bank.models';
 import { ClientService } from './client.service';
 import { CompteService } from './compte.service';
 import { TransactionService } from './transaction.service';
@@ -49,12 +49,13 @@ export class ClientBankService {
     // Effectuer un virement
     // Le formulaire envoie: compteSource, compteDestination, montant, description
     // Le backend attend: accountNumber, targetAccountNumber, amount, description
+    // Le backend retourne: string "Virement effectué avec succès"
     performTransfer(transferData: {
         compteSource: string;
         compteDestination: string;
         montant: number;
         description: string;
-    }): Observable<Transaction> {
+    }): Observable<string> {
         return this.transactionService.transfer(
             transferData.compteSource,          // accountNumber
             transferData.compteDestination,     // targetAccountNumber

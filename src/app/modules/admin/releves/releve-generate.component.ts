@@ -75,19 +75,19 @@ import { FormsModule } from '@angular/forms';
       <div class="bg-light p-4 rounded mb-5 d-flex justify-content-around text-center text-dark">
         <div>
           <div class="small text-muted mb-1">Solde Initial</div>
-          <div class="h4 fw-bold mb-0">{{ releve.soldeInitial | currency:'EUR' }}</div>
+          <div class="h4 fw-bold mb-0">{{ releve.soldeInitial | number:'1.0-0' }} FCFA</div>
         </div>
         <div class="vr"></div>
         <div>
           <div class="small text-muted mb-1">Mouvement Net</div>
           <div class="h4 fw-bold mb-0" [class.text-success]="netMovement >= 0" [class.text-danger]="netMovement < 0">
-            {{ netMovement >= 0 ? '+' : '' }}{{ netMovement | currency:'EUR' }}
+            {{ netMovement >= 0 ? '+' : '' }}{{ netMovement | number:'1.0-0' }} FCFA
           </div>
         </div>
         <div class="vr"></div>
         <div>
           <div class="small text-muted mb-1">Solde Final</div>
-          <div class="h4 fw-bold mb-0 text-success">{{ releve.soldeFinal | currency:'EUR' }}</div>
+          <div class="h4 fw-bold mb-0 text-success">{{ releve.soldeFinal | number:'1.0-0' }} FCFA</div>
         </div>
       </div>
 
@@ -104,8 +104,8 @@ import { FormsModule } from '@angular/forms';
           <tr *ngFor="let t of releve.transactions">
             <td>{{ t.date | date:'dd/MM/yyyy' }}</td>
             <td>{{ t.description }}</td>
-            <td class="text-end text-danger">{{ t.type !== 'DEPOT' ? (t.montant | currency:'EUR') : '' }}</td>
-            <td class="text-end text-success">{{ t.type === 'DEPOT' ? (t.montant | currency:'EUR') : '' }}</td>
+            <td class="text-end text-danger">{{ t.type !== 'DEPOT' ? (t.montant | number:'1.0-0') + ' FCFA' : '' }}</td>
+            <td class="text-end text-success">{{ t.type === 'DEPOT' ? (t.montant | number:'1.0-0') + ' FCFA' : '' }}</td>
           </tr>
           <tr *ngIf="releve.transactions.length === 0">
             <td colspan="4" class="text-center py-5 text-muted fst-italic">Aucune opération sur cette période</td>

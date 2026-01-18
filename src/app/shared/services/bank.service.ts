@@ -24,7 +24,7 @@ export class BankService {
                     { label: 'Total Clients', value: res.clients.length },
                     { label: 'Total Comptes', value: res.accounts.length },
                     { label: 'Total Transactions', value: res.transactions.length },
-                    { label: 'Capital Total', value: totalBalance.toLocaleString() + ' €' }
+                    { label: 'Capital Total', value: totalBalance.toLocaleString() + ' fcfa' }
                 ];
             })
         );

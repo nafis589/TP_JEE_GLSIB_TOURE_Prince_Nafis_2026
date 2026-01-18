@@ -49,7 +49,7 @@ import { Transaction } from '../../../shared/models/bank.models';
                   </td>
                   <td>{{ t.date | date:'mediumDate' }}</td>
                   <td [class.text-danger]="t.montant < 0" [class.text-success]="t.montant > 0" class="fw-bold">
-                    {{ t.montant | currency:'EUR' }}
+                    {{ t.montant | number:'1.0-0' }} FCFA
                   </td>
                   <td>
                     <span class="badge bg-success-subtle text-success border border-success">Success</span>

@@ -78,37 +78,41 @@ export class TransactionService {
 
     // Admin: Dépôt
     // Endpoint: POST /transactions/deposit
-    deposit(accountNumber: string, amount: number, description: string): Observable<Transaction> {
-        return this.http.post<any>(`${this.apiUrl}/deposit`, {
+    // Réponse API: string "Dépôt effectué avec succès"
+    deposit(accountNumber: string, amount: number, description: string): Observable<string> {
+        return this.http.post(`${this.apiUrl}/deposit`, {
             accountNumber,
             amount,
             description
-        }).pipe(map(mapTransactionFromBackend));
+        }, { responseType: 'text' });
     }
 
     // Admin: Retrait
     // Endpoint: POST /transactions/withdraw
-    withdraw(accountNumber: string, amount: number, description: string): Observable<Transaction> {
-        return this.http.post<any>(`${this.apiUrl}/withdraw`, {
+    // Réponse API: string "Retrait effectué avec succès"
+    withdraw(accountNumber: string, amount: number, description: string): Observable<string> {
+        return this.http.post(`${this.apiUrl}/withdraw`, {
             accountNumber,
             amount,
             description
-        }).pipe(map(mapTransactionFromBackend));
+        }, { responseType: 'text' });
     }
 
-    // Client: Virement
+    // Client/Admin: Virement
     // Endpoint: POST /transactions/transfer
-    transfer(accountNumber: string, targetAccountNumber: string, amount: number, description: string): Observable<Transaction> {
-        return this.http.post<any>(`${this.apiUrl}/transfer`, {
+    // Réponse API: string "Virement effectué avec succès"
+    transfer(accountNumber: string, targetAccountNumber: string, amount: number, description: string): Observable<string> {
+        return this.http.post(`${this.apiUrl}/transfer`, {
             accountNumber,
             targetAccountNumber,
             amount,
             description
-        }).pipe(map(mapTransactionFromBackend));
+        }, { responseType: 'text' });
     }
 
     // Pour compatibilité avec l'ancien code
-    createTransaction(t: any): Observable<Transaction> {
+    // Retourne Observable<string> car les endpoints retournent des messages texte
+    createTransaction(t: any): Observable<string> {
         if (t.type === 'DEPOT' || t.type === 'DEPOSIT') {
             return this.deposit(t.accountNumber || t.compteSource, t.amount || t.montant, t.description);
         }

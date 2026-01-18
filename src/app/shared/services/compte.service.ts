@@ -80,10 +80,19 @@ export class CompteService {
         );
     }
 
-    // Recherche par numéro de compte (IBAN)
+    // Recherche par numéro de compte (IBAN) - utilise l'API directe
+    // Endpoint: GET /accounts/{accountNumber}
     getCompteByNumero(numeroCompte: string): Observable<Compte | undefined> {
-        return this.getMyAccounts().pipe(
-            map(comptes => comptes.find(c => c.numeroCompte === numeroCompte))
+        console.log('[CompteService] Getting account by IBAN:', numeroCompte);
+        return this.http.get<any>(`${this.apiUrl}/${encodeURIComponent(numeroCompte)}`).pipe(
+            map(mapCompteFromBackend),
+            catchError(err => {
+                console.warn('[CompteService] Direct endpoint failed, using list fallback:', err);
+                // Fallback: chercher dans mes comptes
+                return this.getMyAccounts().pipe(
+                    map(comptes => comptes.find(c => c.numeroCompte === numeroCompte))
+                );
+            })
         );
     }
 

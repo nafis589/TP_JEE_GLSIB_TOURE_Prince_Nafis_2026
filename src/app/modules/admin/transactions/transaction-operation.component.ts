@@ -25,15 +25,15 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
             <select class="form-select form-select-lg" formControlName="numeroCompte">
               <option value="">-- Choisir un compte --</option>
               <option *ngFor="let c of comptes$ | async" [value]="c.numeroCompte">
-                {{ c.numeroCompte }} - {{ c.clientNom }} ({{ c.solde | currency:'EUR' }})
+                {{ c.numeroCompte }} - {{ c.clientNom }} ({{ c.solde | number:'1.0-0' }} FCFA)
               </option>
             </select>
           </div>
 
           <div class="row g-3 text-dark">
             <div class="col-md-6">
-              <label class="form-label fw-bold">Montant (EUR)</label>
-              <input type="number" class="form-control form-control-lg" formControlName="montant" placeholder="0.00">
+              <label class="form-label fw-bold">Montant (FCFA)</label>
+              <input type="number" class="form-control form-control-lg" formControlName="montant" placeholder="0">
             </div>
             <div class="col-md-6">
               <label class="form-label fw-bold">Description / Libellé</label>

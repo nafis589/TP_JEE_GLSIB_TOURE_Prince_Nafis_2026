@@ -25,7 +25,7 @@ import { Router, RouterLink } from '@angular/router';
             <select class="form-select form-select-lg" formControlName="compteSource">
               <option value="">Sélectionner le compte à débiter</option>
               <option *ngFor="let c of comptes$ | async" [value]="c.numeroCompte">
-                {{ c.numeroCompte }} - {{ c.clientNom }} ({{ c.solde | currency:'EUR' }})
+                {{ c.numeroCompte }} - {{ c.clientNom }} ({{ c.solde | number:'1.0-0' }} FCFA)
               </option>
             </select>
           </div>
@@ -46,7 +46,7 @@ import { Router, RouterLink } from '@angular/router';
 
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label fw-bold">Montant (EUR)</label>
+              <label class="form-label fw-bold">Montant (FCFA)</label>
               <input type="number" class="form-control form-control-lg" formControlName="montant">
             </div>
             <div class="col-md-6">
